@@ -5,6 +5,5 @@
 
 int main(){
     printf("oi");
-    int x = 0;
     return 0;
 }
