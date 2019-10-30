@@ -7,6 +7,6 @@
 
 int main(){
     printf("oi");
-    int y = 0;
+    int z = 0;
     return 0;
 }
