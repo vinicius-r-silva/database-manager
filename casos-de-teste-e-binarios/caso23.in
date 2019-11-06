@@ -1,0 +1,12 @@
+5 caso23.bin 10
+cidadeOrigem "UBERABA"
+cidadeDestino "SAO CARLOS"
+cidadeOrigem "SAO PAULO"
+estadoOrigem RS
+estadoDestino RJ
+tempoViagem NULO
+tempoViagem "25h 0min"
+cidadeOrigem "SAO PAULO"
+distancia 500
+distancia 1108
+
