@@ -262,12 +262,67 @@ void searchByField(FILE *fp, DataHeader header, char* Field, char* value, int ac
             //if(action == REMOVE_FILES)
     }
 }
+void makingRegister(FILE *fp, char* linha){
 
+        char* temp;
+        temp =  (char*)calloc(REGISTER_SIZE, sizeof(char));
+
+    FILE *newFile;
+    newFile = fopen ("mynewfile.bin", "wb");
+
+    //sepates the variableSizeData string into the required fields
+    char delim[] = {',', '\0'};
+    char barra[] = {'|', '\0'};
+    temp = strtok(linha, delim);
+    //saving
+    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+
+    temp = strtok(NULL, delim);
+    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+    
+    temp = strtok(NULL, delim);
+    //String to Int
+    int valor = atoi (temp);
+    fwrite(&valor, sizeof(int), 1 , newFile);
+
+    temp = strtok(NULL, delim);
+        fwrite(barra,sizeof(char), 1 , newFile);
+        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
+    temp = strtok(NULL, delim);
+        fwrite(barra,sizeof(char), 1 , newFile);
+        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
+    temp = strtok(NULL, delim);
+        fwrite(barra,sizeof(char), 1 , newFile);
+        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
+    
+    fclose(newFile);
+
+    
+
+} 
+
+//converting csv
+void DealingCSV (FILE *ptr, char* name ){
+
+    char* linha = (char*) malloc(INPUT_LIMIT*sizeof(char));
+
+    ptr = fopen(name, "r" );
+
+     fseek(ptr, 17, SEEK_SET);
+   
+     while(fgets(linha, INPUT_LIMIT*sizeof(char), ptr) != NULL){
+       makingRegister(ptr, linha);
+    }
+        fclose (ptr);
+        binarioNaTela1("mynewfile.bin");
+    }
+   
+   
 
 int main(){
-    int command = -1;
+    /*int command = -1;
     char *args = (char*)malloc(INPUT_LIMIT * sizeof(char));
-    memset(args, '\0', INPUT_LIMIT * sizeof(char));
+    memset(args, '\0', INPUT_LIMIT * sizeof(char));*/
 
     //scanf(" %d ", &command);
     //fgets(args, INPUT_LIMIT, stdin);
@@ -287,6 +342,6 @@ int main(){
     //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
 
     fclose(fp);
-    free(args);
+    //free(args);
     return 0;
 }
