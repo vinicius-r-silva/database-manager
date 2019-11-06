@@ -173,7 +173,7 @@ DataHeader getHeader(FILE *fp){
 
     //if there is a file, go to the beginning of it
     fseek(fp, 0L, SEEK_SET);
-    
+
     //reading the header....
     fread(&(header.status), sizeof(char), 1, fp);
     fread(&(header.numeroVertices), sizeof(int), 1, fp);
@@ -189,7 +189,9 @@ int main(){
     if(fp == NULL)
         return 0;
 
-    getHeader(fp);
+    DataHeader header;
+    header = getHeader(fp);
+    
     printDataFile(fp);
     return 0;
 }
