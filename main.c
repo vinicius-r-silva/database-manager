@@ -52,6 +52,10 @@ void printRegister(DataRegister reg, int rrn){
         printf("\n");    
 }
 
+char isRegRemoved(DataRegister reg){
+    return reg.estadoOrigem[0] == '*';
+}
+
 //Given a file pointer (fp), get a register 
 //it assumes that the position indicator of the file is the begin of the register
 DataRegister getRegister(FILE *fp, int rrn){
@@ -130,7 +134,9 @@ void printDataFile(FILE *fp){
     
     while (ftell(fp) < fl){           //keeps reading the file while there is data available
         currReg = getRegister(fp, currRRN);    //get the next register in the file and print it
-        printRegister(currReg, currRRN);
+        if(!isRegRemoved(currReg))
+            printRegister(currReg, currRRN);
+            
         freeRegister(currReg);
         currRRN++;
     }
