@@ -14,7 +14,7 @@
 #define FIXED_FIELD_SIZE 2
 #define VARIABLE_FIELD_SIZE 77
 #define TEST_CASE_PATH "casos-de-teste-e-binarios/caso02.bin"
-
+#define REGISTER_SIZE 85
 //the data register struct
 //it holds all the information that is storaged inside of a data register
 struct DataRegister{
@@ -58,9 +58,14 @@ char isRegRemoved(DataRegister reg){
 
 //Given a file pointer (fp), get a register 
 //it assumes that the position indicator of the file is the begin of the register
-DataRegister getRegister(FILE *fp){
-    DataRegister reg; //creates the register variable...
+DataRegister getRegister(FILE *fp, int rrn){
+    
+    
+    //cursor position  
+    fseek(fp, rrn*REGISTER_SIZE+HEADER_SIZE, SEEK_SET);
 
+    DataRegister reg; //creates the register variable...
+ 
     //gets the "estadoOrigem" field
     //estadoOrigem is a fixed size field of size given by FIXED_FIELD_SIZE
     reg.estadoOrigem = (char*)calloc(FIXED_FIELD_SIZE + 1, sizeof(char));
@@ -128,9 +133,10 @@ void printDataFile(FILE *fp){
     fseek(fp, HEADER_SIZE, SEEK_SET); //sets the file position to after the header
     
     while (ftell(fp) < fl){           //keeps reading the file while there is data available
-        currReg = getRegister(fp);    //get the next register in the file and print it
+        currReg = getRegister(fp, currRRN);    //get the next register in the file and print it
         if(!isRegRemoved(currReg))
             printRegister(currReg, currRRN);
+            
         freeRegister(currReg);
         currRRN++;
     }
@@ -194,9 +200,9 @@ int main(){
     char *args = (char*)malloc(INPUT_LIMIT * sizeof(char));
     memset(args, '\0', INPUT_LIMIT * sizeof(char));
 
-    scanf(" %d ", &command);
-    fgets(args, INPUT_LIMIT, stdin);
-    printf("command: %d, args: %s\n", command, args);
+    //scanf(" %d ", &command);
+    //fgets(args, INPUT_LIMIT, stdin);
+    //printf("command: %d, args: %s\n", command, args);
 
     FILE *fp = openFile(TEST_CASE_PATH);
     if(fp == NULL)
