@@ -15,6 +15,9 @@
 #define VARIABLE_FIELD_SIZE 77
 #define TEST_CASE_PATH "casos-de-teste-e-binarios/caso02.bin"
 #define REGISTER_SIZE 85
+
+#define REMOVE_FILES 1
+#define SEARCH_FILES 1
 //the data register struct
 //it holds all the information that is storaged inside of a data register
 struct DataRegister{
@@ -29,6 +32,14 @@ struct DataRegister{
 typedef struct DataRegister DataRegister;
 
 
+struct DataRegisterLinkedList{
+    int rrn;
+    DataRegister reg;
+    struct DataRegisterLinkedList *prox;
+};
+typedef struct DataRegisterLinkedList DataRegisterLinkedList;
+
+
 //the data header struct
 //it holds all the information that is storaged inside of a data file header
 struct DataHeader{
@@ -39,6 +50,8 @@ struct DataHeader{
     int numeroArestas;
 };
 typedef struct DataHeader DataHeader;
+
+enum registerFields {ESTADO_ORIGEM, ESTADO_DESTINO, CIDADE_ORIGEM, CIDADE_DESTINO, TEMPO_VIAGEM, DISTANCIA, ERROR = -1};
 
 //given a register (reg) and its rrn, prints it
 void printRegister(DataRegister reg, int rrn){
@@ -59,9 +72,7 @@ char isRegRemoved(DataRegister reg){
 //Given a file pointer (fp), get a register 
 //it assumes that the position indicator of the file is the begin of the register
 DataRegister getRegister(FILE *fp, int rrn){
-    
-    
-    //cursor position  
+    //sets the cursor position to match the given rrn 
     fseek(fp, rrn*REGISTER_SIZE+HEADER_SIZE, SEEK_SET);
 
     DataRegister reg; //creates the register variable...
@@ -115,7 +126,7 @@ void freeRegister(DataRegister reg){
 
 //given a File pointer (fp), prints the content of the file
 //the binary file must follow the data register description and variables order
-void printDataFile(FILE *fp){
+void printDataFile(FILE *fp, DataHeader header){
 	size_t fl; //file lenght
 
     //check file lenght
@@ -129,14 +140,12 @@ void printDataFile(FILE *fp){
 
     //printing the file...
     int currRRN = 0;                  //Current RRN number
-    DataRegister currReg;             //Current data register
-    fseek(fp, HEADER_SIZE, SEEK_SET); //sets the file position to after the header
-    
-    while (ftell(fp) < fl){           //keeps reading the file while there is data available
+    DataRegister currReg;             //Current data register    
+    while (currRRN < header.numeroArestas){           //keeps reading the file while there is data available
         currReg = getRegister(fp, currRRN);    //get the next register in the file and print it
         if(!isRegRemoved(currReg))
             printRegister(currReg, currRRN);
-            
+        
         freeRegister(currReg);
         currRRN++;
     }
@@ -193,6 +202,66 @@ DataHeader getHeader(FILE *fp){
     return header;
 }
 
+int getFieldId(char* Field){
+    if(strcmp(Field, "estadoOrigem") == 0)
+        return ESTADO_ORIGEM;
+
+    if(strcmp(Field, "estadoDestino") == 0)
+        return ESTADO_DESTINO;
+
+    if(strcmp(Field, "cidadeOrigem") == 0)
+        return CIDADE_ORIGEM;
+
+    if(strcmp(Field, "cidadeDestino") == 0)
+        return CIDADE_DESTINO;
+
+    if(strcmp(Field, "tempoViagem") == 0)
+        return TEMPO_VIAGEM;
+        
+    if(strcmp(Field, "distancia") == 0)
+        return DISTANCIA;
+    
+    return ERROR;
+}
+
+int compareFieldValue(DataRegister reg, char* value, int fieldId){
+    if(fieldId == ESTADO_ORIGEM)
+        return strcmp(reg.estadoOrigem, value) == 0;
+    
+    if(fieldId == ESTADO_DESTINO)
+        return strcmp(reg.estadoDestino, value) == 0;
+
+    if(fieldId == CIDADE_ORIGEM)
+        return strcmp(reg.cidadeOrigem, value) == 0;
+
+    if(fieldId == CIDADE_DESTINO)
+        return strcmp(reg.cidadeDestino, value) == 0;
+
+    if(fieldId == TEMPO_VIAGEM)
+        return strcmp(reg.tempoViagem, value) == 0;
+
+    if(fieldId == DISTANCIA){
+        int value_int = atoi(value);
+        return reg.distancia == value_int;
+    }
+
+    return 0;
+}
+
+//search a certain value of a field 
+void searchByField(FILE *fp, DataHeader header, char* Field, char* value, int action){
+    int rrn = 0;
+    DataRegister reg;
+    int fieldId = getFieldId(Field);
+
+    for(rrn = 0; rrn < header.numeroArestas; rrn++){
+        reg = getRegister(fp, rrn);
+        if(compareFieldValue(reg, value, fieldId))
+            printRegister(reg, rrn);
+
+            //if(action == REMOVE_FILES)
+    }
+}
 
 
 int main(){
@@ -212,7 +281,10 @@ int main(){
     header = getHeader(fp);
     printHeader(header);
     
-    printDataFile(fp);
+    //printDataFile(fp, header);
+
+    printf("\n\n");
+    //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
 
     fclose(fp);
     free(args);
