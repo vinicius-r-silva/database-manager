@@ -129,8 +129,6 @@ void printDataFile(FILE *fp){
         freeRegister(currReg);
         currRRN++;
     }
-
-    fclose(fp);
 }
 
 FILE* openFile(char* filename){
@@ -184,6 +182,8 @@ DataHeader getHeader(FILE *fp){
     return header;
 }
 
+
+
 int main(){
     int command = -1;
     char *args = (char*)malloc(INPUT_LIMIT * sizeof(char));
@@ -202,5 +202,8 @@ int main(){
     printHeader(header);
     
     printDataFile(fp);
+
+    fclose(fp);
+    free(args);
     return 0;
 }
