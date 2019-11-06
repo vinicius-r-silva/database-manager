@@ -1,0 +1,14 @@
+7 caso32.bin 12
+0 tempoViagem "30h"
+1275 distancia 440
+1274 tempoViagem "70horas"
+1274 tempoViagem "69h"
+1274 tempoViagem NULO
+500 distancia 200
+1 cidadeDestino "RECIFE"
+25 cidadeDestino "RECIFE"
+25 estadoDestino PE
+26 estadoOrigem SP
+26 cidadeOrigem "SAO CARLOS"
+8012 cidadeDestino "GOTHAM CITY"
+

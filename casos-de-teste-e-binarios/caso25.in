@@ -1,0 +1,8 @@
+5 caso25.bin 6
+cidadeDestino "SAO PAULO"
+estadoDestino "MG"
+cidadeOrigem "RIO DE JANEIRO"
+estadoOrigem "MG"
+cidadeOrigem "SAO PAULO"
+cidadeDestino "RIO DE JANEIRO"
+

@@ -1,0 +1,16 @@
+
+
+	Aqui estão os casos de teste e arquivos binários disponíveis no run.codes.
+	Arquivos terminados em .csv são os de texto CSV.
+	Arquivos terminados em .in e .out são respectivamente a entrada e saída do programa.
+	Arquivos terminados em .bin são os binários. Você só vai conseguir "enxergar" o conteúdo deles usando alguma ferramenta, como o "hexdump" do Linux.
+
+	A ordem dos casos de teste é a mesma do run.codes, contudo alguns casos não estão disponíveis na plataforma ainda, e só serão inseridos para testes após a data de entrega.
+	Sendo assim, talvez a numeração não seja a mesma, apesar de manter a mesma ordem.
+	Exemplo: se aqui na pasta tem os arquivos caso01.in, caso01.out, caso02.in, caso02.out, caso04.in e caso04.out, eles se referem aos casos de teste 1, 2 e 3 do run.codes respectivamente.
+	Isso quer dizer que o verdadeiro caso03.in e caso03.out não está disponível até que a entrega no run.codes feche.
+
+	Para casos de teste em que um arquivo binário é alterado (exemplo: inserção, atualização, remoção, ...), está disponível a versão do arquivo antes e após a mudança.
+	A versão antes é a com o nome do caso de teste, e a após a mudança é a com o nome do caso de teste acrescentado de "-depois".
+	Exemplo: caso32.bin (antes da execução o arquivo está assim) e caso32-depois.bin (após a execução fica assim).
+
