@@ -27,6 +27,18 @@ struct DataRegister{
 };
 typedef struct DataRegister DataRegister;
 
+
+//the data header struct
+//it holds all the information that is storaged inside of a data file header
+struct DataHeader{
+    char status;
+    char *dataUltimaCompactacao;
+
+    int numeroVertices;
+    int numeroArestas;
+};
+typedef struct DataHeader DataHeader;
+
 //given a register (reg) and its rrn, prints it
 void printRegister(DataRegister reg, int rrn){
     //prints all the data that can't be null
@@ -91,17 +103,10 @@ void freeRegister(DataRegister reg){
     //this happens because "cidadeDestino" and "tempoViagem" where made using strtok function, and "cidadeOrigem" is the main pointer
 }
 
-//given a binary fila name, prints its content
+//given a File pointer (fp), prints the content of the file
 //the binary file must follow the data register description and variables order
-void printDataFile(char* filename){
-	FILE *fp;  //file pointer
+void printDataFile(FILE *fp){
 	size_t fl; //file lenght
-
-    //check if filename is valid and if there is a file to be open
-    if(filename == NULL || !(fp = fopen(filename, "rb"))) {
-		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função binarioNaTela1): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
-		return;
-	}
 
     //check file lenght
     fseek(fp, 0L, SEEK_END);
@@ -117,7 +122,7 @@ void printDataFile(char* filename){
     DataRegister currReg;             //Current data register
     fseek(fp, HEADER_SIZE, SEEK_SET); //sets the file position to after the header
     
-    while (ftell(fp) < fl){           //keeps reading the file while there is data
+    while (ftell(fp) < fl){           //keeps reading the file while there is data available
         currReg = getRegister(fp);    //get the next register in the file and print it
         printRegister(currReg, currRRN);
         freeRegister(currReg);
@@ -127,7 +132,64 @@ void printDataFile(char* filename){
     fclose(fp);
 }
 
+FILE* openFile(char* filename){
+	FILE *fp;  //file pointer
+
+    //check if filename is valid and if there is a file to be open
+    if(filename == NULL || !(fp = fopen(filename, "rb"))) {
+		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função binarioNaTela1): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
+		return NULL;
+	}
+
+    return fp;
+}
+
+//given a header, print its content
+void printHeader(DataHeader header){
+    printf("status: %d\n", header.status);
+    printf("numeroVertices: %d\n", header.numeroVertices);
+    printf("numeroArestas:  %d\n", header.numeroArestas);
+    printf("dataUltimaCompactacao: %s\n", header.dataUltimaCompactacao);
+    printf("\n");
+}
+
+//Given a file pointer, get the data header
+//the binary file must follow the data description given in the "descricao.pdf" file
+DataHeader getHeader(FILE *fp){
+    //creates the header variable
+    DataHeader header;
+    header.status = 0;
+    header.numeroVertices = 0;
+    header.numeroArestas  = 0;
+    header.dataUltimaCompactacao = NULL;
+
+    //if there is no file, then return the header without reading a file
+    if(fp == NULL)
+        return header;
+
+    //if there is a file, alloc memory to the "dataUltimaCompactacao" string
+    header.dataUltimaCompactacao = (char*)malloc(10*sizeof(char));
+    memset(header.dataUltimaCompactacao, '\0', 10);
+
+    //if there is a file, go to the beginning of it
+    fseek(fp, 0L, SEEK_SET);
+    
+    //reading the header....
+    fread(&(header.status), sizeof(char), 1, fp);
+    fread(&(header.numeroVertices), sizeof(int), 1, fp);
+    fread(&(header.numeroArestas),  sizeof(int), 1, fp);
+    fread(header.dataUltimaCompactacao,  sizeof(char), 10, fp);
+
+    printHeader(header);
+    return header;
+}
+
 int main(){
-    printDataFile(TEST_CASE_PATH);
+    FILE *fp = openFile(TEST_CASE_PATH);
+    if(fp == NULL)
+        return 0;
+
+    getHeader(fp);
+    printDataFile(fp);
     return 0;
 }
