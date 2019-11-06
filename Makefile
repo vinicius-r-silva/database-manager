@@ -9,6 +9,9 @@ all: main
 main: $(obj)
 	$(CC) $(CCFLAGS) -o $@ $^ $(LDFLAGS)
 
+run:
+	./main
+	
 .PHONY: clean
 clean:
 	rm -f $(obj) main
