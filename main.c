@@ -9,6 +9,7 @@
 #include <string.h>
 #include "example_functions.h"
 
+#define INPUT_LIMIT 300
 #define HEADER_SIZE 19L
 #define FIXED_FIELD_SIZE 2
 #define VARIABLE_FIELD_SIZE 77
@@ -168,10 +169,10 @@ DataHeader getHeader(FILE *fp){
         return header;
 
     //if there is a file, alloc memory to the "dataUltimaCompactacao" string
-    header.dataUltimaCompactacao = (char*)malloc(10*sizeof(char));
-    memset(header.dataUltimaCompactacao, '\0', 10);
+    header.dataUltimaCompactacao = (char*)malloc(10 * sizeof(char));
+    memset(header.dataUltimaCompactacao, '\0', 10 * sizeof(char));
 
-    //if there is a file, go to the beginning of it
+    //set the cursor on the beginning of the file
     fseek(fp, 0L, SEEK_SET);
 
     //reading the header....
@@ -180,17 +181,25 @@ DataHeader getHeader(FILE *fp){
     fread(&(header.numeroArestas),  sizeof(int), 1, fp);
     fread(header.dataUltimaCompactacao,  sizeof(char), 10, fp);
 
-    printHeader(header);
     return header;
 }
 
 int main(){
+    int command = -1;
+    char *args = (char*)malloc(INPUT_LIMIT * sizeof(char));
+    memset(args, '\0', INPUT_LIMIT * sizeof(char));
+
+    scanf(" %d ", &command);
+    fgets(args, INPUT_LIMIT, stdin);
+    printf("command: %d, args: %s\n", command, args);
+
     FILE *fp = openFile(TEST_CASE_PATH);
     if(fp == NULL)
         return 0;
 
     DataHeader header;
     header = getHeader(fp);
+    printHeader(header);
     
     printDataFile(fp);
     return 0;
