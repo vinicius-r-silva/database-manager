@@ -302,11 +302,11 @@ void makingRegister(FILE *fp, char* linha){
 } 
 
 //converting csv
-void DealingCSV (FILE *ptr, char* name ){
+void DealingCSV (char* name ){
 
     char* linha = (char*) malloc(INPUT_LIMIT*sizeof(char));
 
-    ptr = fopen(name, "r" );
+    FILE *ptr = fopen(name, "r" );
 
      fseek(ptr, 17, SEEK_SET);
    
@@ -317,6 +317,65 @@ void DealingCSV (FILE *ptr, char* name ){
         binarioNaTela1("mynewfile.bin");
     }
    
+void Insert (char *name, int num){
+
+    FILE *ptr = fopen(name, "wb" );
+
+    if(ptr == NULL){
+        printf("Falha no processamento do arquivo.");
+        return;
+    }else{
+        int i = 0;
+        while( i!= num ){
+            
+            i++;
+
+            fseek(ptr, 0, SEEK_END); 
+
+            char*estadoOrigem;
+            estadoOrigem = (char*)calloc(3, sizeof(char));
+            scanf("%s", estadoOrigem);
+            fwrite(estadoOrigem ,sizeof(char), 2, ptr);
+          
+            char*estadoDestino;
+            estadoDestino = (char*)calloc(3, sizeof(char));
+            scanf("%s", estadoDestino);
+            fwrite(estadoDestino ,sizeof(char), 2, ptr);
+
+            int Distancia;
+            Distancia = (int )calloc(1, sizeof(int));
+            scanf("%d", &Distancia);
+            fwrite(&Distancia ,sizeof(int),1, ptr);
+
+            char*cidadeOrigem;
+            cidadeOrigem = (char*)calloc(85, sizeof(char));
+            scanf("%s", cidadeOrigem);
+            scan_quote_string(cidadeOrigem);
+            fwrite(cidadeOrigem ,sizeof(char), 85, ptr);
+
+            char*cidadeDestino;
+            cidadeDestino = (char*)calloc(85, sizeof(char));
+            scanf("%s", cidadeOrigem);
+            scan_quote_string(cidadeDestino);
+            fwrite(cidadeDestino ,sizeof(char), 85, ptr);
+
+            char*tempoViagem;
+            tempoViagem = (char*)calloc(85, sizeof(char));
+            scanf("%s", tempoViagem);
+            scan_quote_string(tempoViagem);
+            fwrite(tempoViagem ,sizeof(char), 85, ptr);
+
+
+        fclose (ptr);
+
+        }
+    }
+
+}
+
+
+
+    
    
 
 int main(){
@@ -339,7 +398,7 @@ int main(){
     //printDataFile(fp, header);
 
     printf("\n\n");
-    //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
+    searchByField(fp, header, "distancia", "150", SEARCH_FILES);
 
     fclose(fp);
     //free(args);
