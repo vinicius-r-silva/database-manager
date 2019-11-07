@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "example_functions.h"
 
 #define INPUT_LIMIT 300
@@ -380,6 +381,12 @@ void setHeaderStatus(FILE *fp, char status){
     fwrite(&status, sizeof(char), 1, fp);
 }
 
+void data(char *datafinal){
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(datafinal, "%.2d/%.2d/%.4d", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900);
+}
+
 
 //Save current Register
 void saveRegister(FILE *fp, DataRegister reg, int rrn){
@@ -456,8 +463,9 @@ void defragmenter(char *in, char *out, DataHeader header){
     snprintf(file_in, sizeof(file_in), "%s", in);
     snprintf(file_out, sizeof(file_out), "%s", out);
     FILE *file_read = fopen(file_in, "rb");
-    FILE *file_write = fopen(file_out, "wb");
+    FILE *file_write = fopen(file_out, "rb+");
     DataRegister aux;
+    
 
     for(int i = 0, j = 0; i < header.numeroVertices; i++){
         aux = getRegister(file_read, i);
@@ -465,10 +473,13 @@ void defragmenter(char *in, char *out, DataHeader header){
             saveRegister(file_write, aux, j);
             j++;
         }
-    }fclose(file_read);
+    }data(header.dataUltimaCompactacao);
+    fseek(file_write, 9, SEEK_SET);
+    fwrite(header.dataUltimaCompactacao, sizeof(header.dataUltimaCompactacao), 10, file_write);
+    printDataFile(file_write, header);
+    fclose(file_read);
     fclose(file_write);
-    file_read = fopen(file_out, "rb");
-    printDataFile(file_read, header);
+    
 }   
    
 
