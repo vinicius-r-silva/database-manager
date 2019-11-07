@@ -376,10 +376,8 @@ void Insert (char *name, int num){
 }
 
 void setHeaderStatus(FILE *fp, char status){
-    DataHeader header = getHeader(fp);
-    header.status = status;
     fseek(fp, 0, SEEK_SET);
-    fwrite(&header.status, sizeof(char), 1, fp);
+    fwrite(&status, sizeof(char), 1, fp);
 }
 
 
