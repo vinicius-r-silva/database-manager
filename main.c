@@ -15,6 +15,8 @@
 #define VARIABLE_FIELD_SIZE 77
 #define TEST_CASE_PATH "casos-de-teste-e-binarios/caso02.bin"
 #define REGISTER_SIZE 85
+#define STATUS_OK '1'
+#define STATUS_CORRUPTED '0'
 
 #define REMOVE_FILES 1
 #define SEARCH_FILES 1
@@ -155,7 +157,7 @@ FILE* openFile(char* filename){
 	FILE *fp;  //file pointer
 
     //check if filename is valid and if there is a file to be open
-    if(filename == NULL || !(fp = fopen(filename, "rb"))) {
+    if(filename == NULL || !(fp = fopen(filename, "rb+"))) {
 		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função binarioNaTela1): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
 		return NULL;
 	}
@@ -165,10 +167,10 @@ FILE* openFile(char* filename){
 
 //given a header, print its content
 void printHeader(DataHeader header){
-    printf("status: %d\n", header.status);
+    printf("status: %c\n", header.status);
     printf("numeroVertices: %d\n", header.numeroVertices);
     printf("numeroArestas:  %d\n", header.numeroArestas);
-    printf("dataUltimaCompactacao: %s\n", header.dataUltimaCompactacao);
+    printf("dataUltimaCompactacao: %.10s\n", header.dataUltimaCompactacao);
     printf("\n");
 }
 
@@ -371,6 +373,13 @@ void Insert (char *name, int num){
         }
     }
 
+}
+
+void setHeaderStatus(FILE *fp, char status){
+    DataHeader header = getHeader(fp);
+    header.status = status;
+    fseek(fp, 0, SEEK_SET);
+    fwrite(&header.status, sizeof(char), 1, fp);
 }
 
 
