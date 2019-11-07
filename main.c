@@ -374,8 +374,95 @@ void Insert (char *name, int num){
 }
 
 
+//Save current Register
+void saveRegister(FILE *fp, DataRegister reg, int rrn){
+    //delimiter symbol
+    char delim = '|';
 
+    fseek(fp, rrn*REGISTER_SIZE + HEADER_SIZE, SEEK_SET);
+    fwrite(reg.estadoOrigem, sizeof(char), FIXED_FIELD_SIZE, fp);
+    fwrite(reg.estadoDestino, sizeof(char), FIXED_FIELD_SIZE, fp);
+    fwrite(&reg.distancia, sizeof(int), DISTANCIA, fp);
+    fwrite(reg.cidadeOrigem, sizeof(char), sizeof(reg.cidadeOrigem), fp);
+    fwrite(&delim, sizeof(char), 1, fp);
+    fwrite(reg.cidadeDestino, sizeof(char), sizeof(reg.cidadeDestino), fp);
+    fwrite(&delim, sizeof(char), 1, fp);
+    fwrite(reg.tempoViagem, sizeof(char), sizeof(reg.tempoViagem), fp);
+    fwrite(&delim, sizeof(char), 1, fp);
+}
+
+//Updating a field register (Function 7)
+void updateRegister(FILE *fp, DataHeader header, int size){
+    //RRN Value
+    int rrn;
+    //field identifier
+    int fieldId;
+    //Field Name
+    char Field[14];
+    //Value of a field
+    char* value = (char*)malloc(REGISTER_SIZE * sizeof(char));
+
+    for(int n = 0; n < size; n++){
+        DataRegister Reg;
+        printf("Qual o RRN?\n");
+        fflush(stdin);
+        scanf("%d", &rrn);
+        printf("Qual o campo?\n");
+        fflush(stdin);
+        scanf("%s", Field);
+        printf("Qual o valor?\n");
+        fflush(stdin);
+        scanf("%s", value);
+        fieldId = getFieldId(Field);
+        Reg = getRegister(fp, rrn);
+        switch (fieldId) {
+            case ESTADO_ORIGEM:
+                Reg.estadoOrigem = value;
+                break;
+            case ESTADO_DESTINO:
+                Reg.estadoDestino = value;
+                break;
+            case CIDADE_ORIGEM:
+                Reg.cidadeOrigem = value;
+                break;
+            case CIDADE_DESTINO:
+                Reg.cidadeDestino = value;
+                break;
+            case TEMPO_VIAGEM:
+                Reg.tempoViagem = value;
+                break;
+            case DISTANCIA:
+                Reg.distancia = atoi(value);
+                break;
+            default:
+                printf("Falha no processamento do arquivo.\n");
+                return;
+        }
+        saveRegister(fp, Reg, rrn);
+    }printDataFile(fp, header);
     
+}
+
+//defragmenting file
+void defragmenter(char *in, char *out, DataHeader header){
+    char file_in[strlen(in)+1], file_out[strlen(out)+1];
+    snprintf(file_in, sizeof(file_in), "%s", in);
+    snprintf(file_out, sizeof(file_out), "%s", out);
+    FILE *file_read = fopen(file_in, "rb");
+    FILE *file_write = fopen(file_out, "wb");
+    DataRegister aux;
+
+    for(int i = 0, j = 0; i < header.numeroVertices; i++){
+        aux = getRegister(file_read, i);
+        if(isRegRemoved(aux) != '*'){
+            saveRegister(file_write, aux, j);
+            j++;
+        }
+    }fclose(file_read);
+    fclose(file_write);
+    file_read = fopen(file_out, "rb");
+    printDataFile(file_read, header);
+}   
    
 
 int main(){
