@@ -391,42 +391,38 @@ void data(char *datafinal){
 //Save current Register
 void saveRegister(FILE *fp, DataRegister reg, int rrn){
     //delimiter symbol
-    char delim = '|';
-
-    fseek(fp, rrn*REGISTER_SIZE + HEADER_SIZE, SEEK_SET);
-    fwrite(reg.estadoOrigem, sizeof(char), FIXED_FIELD_SIZE, fp);
-    fwrite(reg.estadoDestino, sizeof(char), FIXED_FIELD_SIZE, fp);
-    fwrite(&reg.distancia, sizeof(int), DISTANCIA, fp);
-    fwrite(reg.cidadeOrigem, sizeof(char), sizeof(reg.cidadeOrigem), fp);
-    fwrite(&delim, sizeof(char), 1, fp);
-    fwrite(reg.cidadeDestino, sizeof(char), sizeof(reg.cidadeDestino), fp);
-    fwrite(&delim, sizeof(char), 1, fp);
-    fwrite(reg.tempoViagem, sizeof(char), sizeof(reg.tempoViagem), fp);
-    fwrite(&delim, sizeof(char), 1, fp);
+    char delim = '|'; 
+    fseek(fp, 19, SEEK_SET);
+    fwrite(reg.estadoOrigem, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
+    fwrite(reg.estadoDestino, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
+    fwrite(&reg.distancia, sizeof(__int16), 1*sizeof(__int16), fp);
+    fwrite(reg.cidadeOrigem, sizeof(char), sizeof(char)*strlen(reg.cidadeOrigem), fp);
+    fwrite(&delim, sizeof(char), 1*sizeof(char), fp);
+    fwrite(reg.cidadeDestino, sizeof(char),  sizeof(char)*strlen(reg.cidadeDestino), fp);
+    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
+    fwrite(reg.tempoViagem, sizeof(char),  sizeof(char)*strlen(reg.tempoViagem), fp);
+    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
 }
 
 //Updating a field register (Function 7)
 void updateRegister(FILE *fp, DataHeader header, int size){
     //RRN Value
-    int rrn;
+    int rrn = 0;
     //field identifier
-    int fieldId;
+    int fieldId = 0;
     //Field Name
-    char Field[14];
+    char *Field = (char*)calloc(14, sizeof(char));
     //Value of a field
-    char* value = (char*)malloc(REGISTER_SIZE * sizeof(char));
+    char* value = (char*)calloc(REGISTER_SIZE, sizeof(char));
 
     for(int n = 0; n < size; n++){
         DataRegister Reg;
         printf("Qual o RRN?\n");
-        fflush(stdin);
         scanf("%d", &rrn);
         printf("Qual o campo?\n");
-        fflush(stdin);
-        scanf("%s", Field);
+        scanf(" %s", Field);
         printf("Qual o valor?\n");
-        fflush(stdin);
-        scanf("%s", value);
+        scan_quote_string(value);
         fieldId = getFieldId(Field);
         Reg = getRegister(fp, rrn);
         switch (fieldId) {
@@ -451,8 +447,7 @@ void updateRegister(FILE *fp, DataHeader header, int size){
             default:
                 printf("Falha no processamento do arquivo.\n");
                 return;
-        }
-        saveRegister(fp, Reg, rrn);
+        }saveRegister(fp, Reg, rrn);
     }printDataFile(fp, header);
     
 }
@@ -504,6 +499,7 @@ int main(){
 
     printf("\n\n");
     searchByField(fp, header, "distancia", "150", SEARCH_FILES);
+    updateRegister(fp, header, 2);
 
     fclose(fp);
     //free(args);
