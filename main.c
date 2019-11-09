@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "example_functions.h"
 
 #define INPUT_LIMIT 300
@@ -15,6 +16,8 @@
 #define VARIABLE_FIELD_SIZE 77
 #define TEST_CASE_PATH "casos-de-teste-e-binarios/caso02.bin"
 #define REGISTER_SIZE 85
+#define STATUS_OK '1'
+#define STATUS_CORRUPTED '0'
 
 #define REMOVE_FILES 1
 #define SEARCH_FILES 1
@@ -155,7 +158,7 @@ FILE* openFile(char* filename){
 	FILE *fp;  //file pointer
 
     //check if filename is valid and if there is a file to be open
-    if(filename == NULL || !(fp = fopen(filename, "rb"))) {
+    if(filename == NULL || !(fp = fopen(filename, "rb+"))) {
 		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função binarioNaTela1): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
 		return NULL;
 	}
@@ -165,10 +168,10 @@ FILE* openFile(char* filename){
 
 //given a header, print its content
 void printHeader(DataHeader header){
-    printf("status: %d\n", header.status);
+    printf("status: %c\n", header.status);
     printf("numeroVertices: %d\n", header.numeroVertices);
     printf("numeroArestas:  %d\n", header.numeroArestas);
-    printf("dataUltimaCompactacao: %s\n", header.dataUltimaCompactacao);
+    printf("dataUltimaCompactacao: %.10s\n", header.dataUltimaCompactacao);
     printf("\n");
 }
 
@@ -305,11 +308,11 @@ void makingRegister(FILE *fp, char* linha){
 } 
 
 //converting csv
-void DealingCSV (FILE *ptr, char* name ){
+void DealingCSV (char* name ){
 
     char* linha = (char*) malloc(INPUT_LIMIT*sizeof(char));
 
-    ptr = fopen(name, "r" );
+    FILE *ptr = fopen(name, "r" );
 
      fseek(ptr, 17, SEEK_SET);
    
@@ -320,6 +323,162 @@ void DealingCSV (FILE *ptr, char* name ){
         binarioNaTela1("mynewfile.bin");
     }
    
+void Insert (char *name, int num){
+
+    FILE *ptr = fopen(name, "wb" );
+
+    if(ptr == NULL){
+        printf("Falha no processamento do arquivo.");
+        return;
+    }else{
+        int i = 0;
+        while( i!= num ){
+            
+            i++;
+
+            fseek(ptr, 0, SEEK_END); 
+
+            char*estadoOrigem;
+            estadoOrigem = (char*)calloc(3, sizeof(char));
+            scanf("%s", estadoOrigem);
+            fwrite(estadoOrigem ,sizeof(char), 2, ptr);
+          
+            char*estadoDestino;
+            estadoDestino = (char*)calloc(3, sizeof(char));
+            scanf("%s", estadoDestino);
+            fwrite(estadoDestino ,sizeof(char), 2, ptr);
+
+            int Distancia;
+            Distancia = (int )calloc(1, sizeof(int));
+            scanf("%d", &Distancia);
+            fwrite(&Distancia ,sizeof(int),1, ptr);
+
+            char*cidadeOrigem;
+            cidadeOrigem = (char*)calloc(85, sizeof(char));
+            scanf("%s", cidadeOrigem);
+            scan_quote_string(cidadeOrigem);
+            fwrite(cidadeOrigem ,sizeof(char), 85, ptr);
+
+            char*cidadeDestino;
+            cidadeDestino = (char*)calloc(85, sizeof(char));
+            scanf("%s", cidadeOrigem);
+            scan_quote_string(cidadeDestino);
+            fwrite(cidadeDestino ,sizeof(char), 85, ptr);
+
+            char*tempoViagem;
+            tempoViagem = (char*)calloc(85, sizeof(char));
+            scanf("%s", tempoViagem);
+            scan_quote_string(tempoViagem);
+            fwrite(tempoViagem ,sizeof(char), 85, ptr);
+
+
+        fclose (ptr);
+
+        }
+    }
+
+}
+
+void setHeaderStatus(FILE *fp, char status){
+    fseek(fp, 0, SEEK_SET);
+    fwrite(&status, sizeof(char), 1, fp);
+}
+
+void data(char *datafinal){
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(datafinal, "%.2d/%.2d/%.4d", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900);
+}
+
+
+//Save current Register
+void saveRegister(FILE *fp, DataRegister reg, int rrn){
+    //delimiter symbol
+    char delim = '|'; 
+    fseek(fp, 19, SEEK_SET);
+    fwrite(reg.estadoOrigem, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
+    fwrite(reg.estadoDestino, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
+    fwrite(&reg.distancia, sizeof(__int16), 1*sizeof(__int16), fp);
+    fwrite(reg.cidadeOrigem, sizeof(char), sizeof(char)*strlen(reg.cidadeOrigem), fp);
+    fwrite(&delim, sizeof(char), 1*sizeof(char), fp);
+    fwrite(reg.cidadeDestino, sizeof(char),  sizeof(char)*strlen(reg.cidadeDestino), fp);
+    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
+    fwrite(reg.tempoViagem, sizeof(char),  sizeof(char)*strlen(reg.tempoViagem), fp);
+    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
+}
+
+//Updating a field register (Function 7)
+void updateRegister(FILE *fp, DataHeader header, int size){
+    //RRN Value
+    int rrn = 0;
+    //field identifier
+    int fieldId = 0;
+    //Field Name
+    char *Field = (char*)calloc(14, sizeof(char));
+    //Value of a field
+    char* value = (char*)calloc(REGISTER_SIZE, sizeof(char));
+
+    for(int n = 0; n < size; n++){
+        DataRegister Reg;
+        printf("Qual o RRN?\n");
+        scanf("%d", &rrn);
+        printf("Qual o campo?\n");
+        scanf(" %s", Field);
+        printf("Qual o valor?\n");
+        scan_quote_string(value);
+        fieldId = getFieldId(Field);
+        Reg = getRegister(fp, rrn);
+        switch (fieldId) {
+            case ESTADO_ORIGEM:
+                Reg.estadoOrigem = value;
+                break;
+            case ESTADO_DESTINO:
+                Reg.estadoDestino = value;
+                break;
+            case CIDADE_ORIGEM:
+                Reg.cidadeOrigem = value;
+                break;
+            case CIDADE_DESTINO:
+                Reg.cidadeDestino = value;
+                break;
+            case TEMPO_VIAGEM:
+                Reg.tempoViagem = value;
+                break;
+            case DISTANCIA:
+                Reg.distancia = atoi(value);
+                break;
+            default:
+                printf("Falha no processamento do arquivo.\n");
+                return;
+        }saveRegister(fp, Reg, rrn);
+    }printDataFile(fp, header);
+    
+}
+
+//defragmenting file
+void defragmenter(char *in, char *out, DataHeader header){
+    char file_in[strlen(in)+1], file_out[strlen(out)+1];
+    snprintf(file_in, sizeof(file_in), "%s", in);
+    snprintf(file_out, sizeof(file_out), "%s", out);
+    FILE *file_read = fopen(file_in, "rb");
+    FILE *file_write = fopen(file_out, "rb+");
+    DataRegister aux;
+    
+
+    for(int i = 0, j = 0; i < header.numeroVertices; i++){
+        aux = getRegister(file_read, i);
+        if(isRegRemoved(aux) != '*'){
+            saveRegister(file_write, aux, j);
+            j++;
+        }
+    }data(header.dataUltimaCompactacao);
+    fseek(file_write, 9, SEEK_SET);
+    fwrite(header.dataUltimaCompactacao, sizeof(header.dataUltimaCompactacao), 10, file_write);
+    printDataFile(file_write, header);
+    fclose(file_read);
+    fclose(file_write);
+    
+}   
    
 
 
@@ -343,7 +502,8 @@ int main(){
     //printDataFile(fp, header);
 
     printf("\n\n");
-    //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
+    searchByField(fp, header, "distancia", "150", SEARCH_FILES);
+    updateRegister(fp, header, 2);
 
     fclose(fp);
     //free(args);
