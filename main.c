@@ -268,61 +268,101 @@ void searchByField(FILE *fp, DataHeader header, char* Field, char* value, int ac
             //if(action == REMOVE_FILES)
     }
 }
-void makingRegister(FILE *fp, char* linha){
+
+
+void makingRegister(char* LINHA, FILE *newFile){
+
+    
+    printf("makingRegister abriu \n");
 
         char* temp;
-        temp =  (char*)calloc(REGISTER_SIZE, sizeof(char));
+        temp =  (char*)calloc(85, sizeof(char));
 
-    FILE *newFile;
-    newFile = fopen ("arquivoGerado.bin", "wb");
-
-    //sepates the variableSizeData string into the required fields
+    //separets the variableSizeData string into the required fields
     char delim[] = {',', '\0'};
-    char barra[] = {'|', '\0'};
-    temp = strtok(linha, delim);
+  
     //saving
-    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+    //fixed Size -- estadoOrigem
+    temp = strtok(LINHA, delim);
+    fwrite(temp,sizeof(char), 2, newFile);
 
+    //fixed Size -- estadoDestino
     temp = strtok(NULL, delim);
-    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+    fwrite(temp,sizeof(char), 2, newFile);
     
+    //fixed Size -- Distancia
     temp = strtok(NULL, delim);
-    //String to Int
+    //converting String to Int
     int valor = atoi (temp);
     fwrite(&valor, sizeof(int), 1 , newFile);
 
+    //variable Size -- cidadeOrigem
     temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
-    temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
-    temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
-    
-    fclose(newFile);
+        int lenCO;
+        lenCO= 0;
+        lenCO = strlen(temp);
+        fwrite(temp, sizeof(char), lenCO, newFile);
+        fputc('|', newFile );
 
-    
+    //variable Size -- cidadeDestino    
+    temp = strtok(NULL, delim);
+        int lenCD;
+        lenCD= 0;
+        lenCD = strlen(temp);
+        fwrite(temp, sizeof(char), lenCD, newFile);
+        fputc('|', newFile );
+
+    //variable Size -- tempoViagem    
+    temp = strtok(NULL, delim);
+    temp[strlen(temp) - 1] = '\0';
+        int tV;
+        tV= 0;
+        tV = strlen(temp);
+        fwrite(temp, sizeof(char), tV, newFile);
+        fputc('|', newFile );
+
+        int espacoUsado;
+        espacoUsado = 0;
+        espacoUsado = lenCD + lenCO + tV + 3;
+
+        char* completar;
+        completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
+        memset(completar, '#', REGISTER_SIZE*sizeof(char));
+        fwrite(completar,sizeof(char), espacoUsado, newFile);
 
 } 
 
 //converting csv
 void DealingCSV (char* name ){
 
-    char* linha = (char*) malloc(INPUT_LIMIT*sizeof(char));
+    char* linha;
+    linha = (char*) calloc(85,sizeof(char));
 
     FILE *ptr = fopen(name, "r" );
 
-     fseek(ptr, 17, SEEK_SET);
-   
-     while(fgets(linha, INPUT_LIMIT*sizeof(char), ptr) != NULL){
-       makingRegister(ptr, linha);
+     fseek(ptr, 77, SEEK_SET);
+
+        
+        FILE *newFile;
+        newFile = fopen ("arquivoGerado.bin", "wb");
+
+     while(fgets(linha, REGISTER_SIZE*sizeof(char), ptr) != NULL){
+         
+
+         printf("%s", linha);
+
+         makingRegister(linha, newFile);
+         memset(linha, '\0',85*sizeof(char) );
     }
         fclose (ptr);
         binarioNaTela1("arquivoGerado.bin");
     }
-   
+
+
+
+
+
+//Insert function   
 void Insert (char *name, int num){
    
    //opening file
@@ -334,7 +374,6 @@ void Insert (char *name, int num){
     int tmp;
         tmp = 0;
 
-    printf("file aberto\n");
     if(ptr == NULL){
         printf("Falha no processamento do arquivo.");
         return;
@@ -348,7 +387,7 @@ void Insert (char *name, int num){
 
         while( i!= num ){
              i++;
-            printf("entrou while\n");
+          
 
             int espacoUsado;
 
@@ -417,8 +456,6 @@ void Insert (char *name, int num){
 
         
         fclose (ptr);
-
-        printf("arquivo fechado \n");
     }
 
 }
@@ -535,28 +572,28 @@ int main(){
     //fgets(args, INPUT_LIMIT, stdin);
     //printf("command: %d, args: %s\n", command, args);
 
-    FILE *fp = openFile(TEST_CASE_PATH);
+   /* FILE *fp = openFile(TEST_CASE_PATH);
     if(fp == NULL)
         return 0;
 
     DataHeader header;
-    header = getHeader(fp);
+    header = getHeader(fp);*/
 
-  /* char *nomeCVS = "conjuntoDados.csv";
-    DealingCSV(nomeCVS);*/
+    char *nomeCVS = "caso02.csv";
+    DealingCSV(nomeCVS);
 
-    Insert("caso02.bin", 2);
+    //Insert("caso02.bin", 2);
 
 
     //printHeader(header);
     
     //printDataFile(fp, header);
 
-    printf("\n\n");
+  /*  printf("\n\n");
     searchByField(fp, header, "distancia", "150", SEARCH_FILES);
     updateRegister(fp, header, 2);
 
     fclose(fp);
     //free(args);
-    return 0;
+    return 0;*/
 }
