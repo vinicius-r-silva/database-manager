@@ -288,109 +288,194 @@ void searchByField(FILE *fp, DataHeader header, char* value, char* field, int ac
             //if(action == REMOVE_FILES)
     }
 }
-void makingRegister(FILE *fp, char* linha){
+
+
+void makingRegister(char* LINHA, FILE *newFile){
+
+    
+    printf("makingRegister abriu \n");
 
         char* temp;
-        temp =  (char*)calloc(REGISTER_SIZE, sizeof(char));
+        temp =  (char*)calloc(85, sizeof(char));
 
-    FILE *newFile;
-    newFile = fopen ("mynewfile.bin", "wb");
-
-    //sepates the variableSizeData string into the required fields
+    //separets the variableSizeData string into the required fields
     char delim[] = {',', '\0'};
-    char barra[] = {'|', '\0'};
-    temp = strtok(linha, delim);
+  
     //saving
-    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+    //fixed Size -- estadoOrigem
+    temp = strtok(LINHA, delim);
+    fwrite(temp,sizeof(char), 2, newFile);
 
+    //fixed Size -- estadoDestino
     temp = strtok(NULL, delim);
-    fwrite(temp,sizeof(char), FIXED_FIELD_SIZE, newFile);
+    fwrite(temp,sizeof(char), 2, newFile);
     
+    //fixed Size -- Distancia
     temp = strtok(NULL, delim);
-    //String to Int
+    //converting String to Int
     int valor = atoi (temp);
     fwrite(&valor, sizeof(int), 1 , newFile);
 
+    //variable Size -- cidadeOrigem
     temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
+        int lenCO;
+        lenCO= 0;
+        lenCO = strlen(temp);
+        fwrite(temp, sizeof(char), lenCO, newFile);
+        fputc('|', newFile );
+
+    //variable Size -- cidadeDestino    
     temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
+        int lenCD;
+        lenCD= 0;
+        lenCD = strlen(temp);
+        fwrite(temp, sizeof(char), lenCD, newFile);
+        fputc('|', newFile );
+
+    //variable Size -- tempoViagem    
     temp = strtok(NULL, delim);
-        fwrite(barra,sizeof(char), 1 , newFile);
-        fwrite(temp, sizeof(char), VARIABLE_FIELD_SIZE, newFile);
-    
-    fclose(newFile);
+    temp[strlen(temp) - 1] = '\0';
+        int tV;
+        tV= 0;
+        tV = strlen(temp);
+        fwrite(temp, sizeof(char), tV, newFile);
+        fputc('|', newFile );
+
+        int espacoUsado;
+        espacoUsado = 0;
+        espacoUsado = lenCD + lenCO + tV + 3;
+
+        char* completar;
+        completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
+        memset(completar, '#', REGISTER_SIZE*sizeof(char));
+        fwrite(completar,sizeof(char), espacoUsado, newFile);
+
 } 
 
 //converting csv
 void DealingCSV (char* name ){
 
-    char* linha = (char*) malloc(INPUT_LIMIT*sizeof(char));
+    char* linha;
+    linha = (char*) calloc(85,sizeof(char));
 
     FILE *ptr = fopen(name, "r" );
 
-     fseek(ptr, 17, SEEK_SET);
-   
-     while(fgets(linha, INPUT_LIMIT*sizeof(char), ptr) != NULL){
-       makingRegister(ptr, linha);
+     fseek(ptr, 77, SEEK_SET);
+
+        
+        FILE *newFile;
+        newFile = fopen ("arquivoGerado.bin", "wb");
+
+     while(fgets(linha, REGISTER_SIZE*sizeof(char), ptr) != NULL){
+         
+
+         printf("%s", linha);
+
+         makingRegister(linha, newFile);
+         memset(linha, '\0',85*sizeof(char) );
     }
         fclose (ptr);
-        binarioNaTela1("mynewfile.bin");
+        binarioNaTela1("arquivoGerado.bin");
     }
-   
-void Insert (char *name, int num){
 
-    FILE *ptr = fopen(name, "wb" );
+
+
+
+
+//Insert function   
+void Insert (char *name, int num){
+   
+   //opening file
+    FILE *ptr;
+    ptr =  fopen(name, "ab+" );
+
+    int espacoTotal;
+        espacoTotal = 0;
+    int tmp;
+        tmp = 0;
 
     if(ptr == NULL){
         printf("Falha no processamento do arquivo.");
         return;
     }else{
+
         int i = 0;
+         
+        char* completar;
+        completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
+        memset(completar, '#', REGISTER_SIZE*sizeof(char));
+
         while( i!= num ){
-            
-            i++;
+             i++;
+          
 
-            fseek(ptr, 0, SEEK_END); 
+            int espacoUsado;
 
+            //fixed sixe
             char*estadoOrigem;
             estadoOrigem = (char*)calloc(3, sizeof(char));
             scanf("%s", estadoOrigem);
+            printf("%s", estadoOrigem);
             fwrite(estadoOrigem ,sizeof(char), 2, ptr);
-          
+            free(estadoOrigem);
+
             char*estadoDestino;
             estadoDestino = (char*)calloc(3, sizeof(char));
             scanf("%s", estadoDestino);
+            printf("%s", estadoDestino);
             fwrite(estadoDestino ,sizeof(char), 2, ptr);
+            free(estadoDestino);
+            
 
             int Distancia;
             scanf("%d", &Distancia);
+            printf ("%d", Distancia);
+            getchar();
             fwrite(&Distancia ,sizeof(int),1, ptr);
-
+            
+            //variable size 
             char*cidadeOrigem;
+            int lenCO;
+            lenCO= 0;
             cidadeOrigem = (char*)calloc(85, sizeof(char));
-            scanf("%s", cidadeOrigem);
             scan_quote_string(cidadeOrigem);
-            fwrite(cidadeOrigem ,sizeof(char), 85, ptr);
+            lenCO = strlen(cidadeOrigem);
+            fwrite(cidadeOrigem ,sizeof(char), lenCO, ptr);
+            fputc('|', ptr);
+            free(cidadeOrigem);
 
             char*cidadeDestino;
+            int lenCD;
+            lenCD = 0;
             cidadeDestino = (char*)calloc(85, sizeof(char));
-            scanf("%s", cidadeOrigem);
             scan_quote_string(cidadeDestino);
-            fwrite(cidadeDestino ,sizeof(char), 85, ptr);
+            lenCD =  strlen(cidadeDestino);
+            fwrite(cidadeDestino ,sizeof(char), lenCD , ptr);
+            fputc('|', ptr);
+            free(cidadeDestino);
 
             char*tempoViagem;
+            int tV;
+            tV = 0;
             tempoViagem = (char*)calloc(85, sizeof(char));
-            scanf("%s", tempoViagem);
             scan_quote_string(tempoViagem);
-            fwrite(tempoViagem ,sizeof(char), 85, ptr);
+            tV = strlen(tempoViagem);
+            fwrite(tempoViagem ,sizeof(char), tV, ptr);
+            fputc('|', ptr);
+            free(tempoViagem);
 
-
-        fclose (ptr);
+            espacoUsado = lenCD + lenCO + tV + 3;
+            tmp = espacoUsado;
 
         }
+
+        espacoTotal = espacoTotal + tmp;
+
+        fwrite(completar,sizeof(char), espacoTotal, ptr);
+
+
+        
+        fclose (ptr);
     }
 
 }
@@ -667,6 +752,14 @@ int main(){
     FILE *fp = NULL;
     char Delim[] = {' ', '\0'};
     DataHeader header;
+    header = getHeader(fp);*/
+
+    char *nomeCVS = "caso02.csv";
+    DealingCSV(nomeCVS);
+
+    //Insert("caso02.bin", 2);
+
+
     //printHeader(header);
     
 
@@ -751,5 +844,5 @@ int main(){
 
     fclose(fp);
     //free(args);
-    return 0;
+    return 0;*/
 }
