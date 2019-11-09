@@ -256,6 +256,9 @@ void searchByField(FILE *fp, DataHeader header, char* Field, char* value, int ac
 
     for(rrn = 0; rrn < header.numeroArestas; rrn++){
         reg = getRegister(fp, rrn);
+        if(isRegRemoved(reg))
+            continue;
+            
         if(compareFieldValue(reg, value, fieldId))
             printRegister(reg, rrn);
 
@@ -318,6 +321,7 @@ void DealingCSV (FILE *ptr, char* name ){
     }
    
    
+
 
 int main(){
     /*int command = -1;
