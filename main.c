@@ -268,7 +268,7 @@ void makingRegister(FILE *fp, char* linha){
         temp =  (char*)calloc(REGISTER_SIZE, sizeof(char));
 
     FILE *newFile;
-    newFile = fopen ("mynewfile.bin", "wb");
+    newFile = fopen ("arquivoGerado.bin", "wb");
 
     //sepates the variableSizeData string into the required fields
     char delim[] = {',', '\0'};
@@ -314,61 +314,105 @@ void DealingCSV (char* name ){
        makingRegister(ptr, linha);
     }
         fclose (ptr);
-        binarioNaTela1("mynewfile.bin");
+        binarioNaTela1("arquivoGerado.bin");
     }
    
 void Insert (char *name, int num){
+   
+   //opening file
+    FILE *ptr;
+    ptr =  fopen(name, "ab+" );
 
-    FILE *ptr = fopen(name, "wb" );
+    int espacoTotal;
+        espacoTotal = 0;
+    int tmp;
+        tmp = 0;
 
+    printf("file aberto\n");
     if(ptr == NULL){
         printf("Falha no processamento do arquivo.");
         return;
     }else{
+
         int i = 0;
+         
+        char* completar;
+        completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
+        memset(completar, '#', REGISTER_SIZE*sizeof(char));
+
         while( i!= num ){
-            
-            i++;
+             i++;
+            printf("entrou while\n");
 
-            fseek(ptr, 0, SEEK_END); 
+            int espacoUsado;
 
+            //fixed sixe
             char*estadoOrigem;
             estadoOrigem = (char*)calloc(3, sizeof(char));
             scanf("%s", estadoOrigem);
+            printf("%s", estadoOrigem);
             fwrite(estadoOrigem ,sizeof(char), 2, ptr);
-          
+            free(estadoOrigem);
+
             char*estadoDestino;
             estadoDestino = (char*)calloc(3, sizeof(char));
             scanf("%s", estadoDestino);
+            printf("%s", estadoDestino);
             fwrite(estadoDestino ,sizeof(char), 2, ptr);
+            free(estadoDestino);
+            
 
             int Distancia;
-            Distancia = (int )calloc(1, sizeof(int));
             scanf("%d", &Distancia);
+            printf ("%d", Distancia);
+            getchar();
             fwrite(&Distancia ,sizeof(int),1, ptr);
-
+            
+            //variable size 
             char*cidadeOrigem;
+            int lenCO;
+            lenCO= 0;
             cidadeOrigem = (char*)calloc(85, sizeof(char));
-            scanf("%s", cidadeOrigem);
             scan_quote_string(cidadeOrigem);
-            fwrite(cidadeOrigem ,sizeof(char), 85, ptr);
+            lenCO = strlen(cidadeOrigem);
+            fwrite(cidadeOrigem ,sizeof(char), lenCO, ptr);
+            fputc('|', ptr);
+            free(cidadeOrigem);
 
             char*cidadeDestino;
+            int lenCD;
+            lenCD = 0;
             cidadeDestino = (char*)calloc(85, sizeof(char));
-            scanf("%s", cidadeOrigem);
             scan_quote_string(cidadeDestino);
-            fwrite(cidadeDestino ,sizeof(char), 85, ptr);
+            lenCD =  strlen(cidadeDestino);
+            fwrite(cidadeDestino ,sizeof(char), lenCD , ptr);
+            fputc('|', ptr);
+            free(cidadeDestino);
 
             char*tempoViagem;
+            int tV;
+            tV = 0;
             tempoViagem = (char*)calloc(85, sizeof(char));
-            scanf("%s", tempoViagem);
             scan_quote_string(tempoViagem);
-            fwrite(tempoViagem ,sizeof(char), 85, ptr);
+            tV = strlen(tempoViagem);
+            fwrite(tempoViagem ,sizeof(char), tV, ptr);
+            fputc('|', ptr);
+            free(tempoViagem);
 
-
-        fclose (ptr);
+            espacoUsado = lenCD + lenCO + tV + 3;
+            tmp = espacoUsado;
 
         }
+
+        espacoTotal = espacoTotal + tmp;
+
+        fwrite(completar,sizeof(char), espacoTotal, ptr);
+
+
+        
+        fclose (ptr);
+
+        printf("arquivo fechado \n");
     }
 
 }
@@ -393,12 +437,19 @@ int main(){
 
     DataHeader header;
     header = getHeader(fp);
-    printHeader(header);
+
+  /* char *nomeCVS = "conjuntoDados.csv";
+    DealingCSV(nomeCVS);*/
+
+    Insert("caso02.bin", 2);
+
+
+    //printHeader(header);
     
     //printDataFile(fp, header);
 
-    printf("\n\n");
-    searchByField(fp, header, "distancia", "150", SEARCH_FILES);
+    //printf("\n\n");
+    //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
 
     fclose(fp);
     //free(args);
