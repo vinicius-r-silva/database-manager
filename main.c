@@ -415,8 +415,7 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
 
 
 void makingRegister(char* LINHA, FILE *newFile){
-    printf("makingRegister abriu \n");
-
+    
         char* temp;
         temp =  (char*)calloc(85, sizeof(char));
 
@@ -427,6 +426,7 @@ void makingRegister(char* LINHA, FILE *newFile){
     //fixed Size -- estadoOrigem
     temp = strtok(LINHA, delim);
     fwrite(temp,sizeof(char), 2, newFile);
+
 
     //fixed Size -- estadoDestino
     temp = strtok(NULL, delim);
@@ -472,32 +472,40 @@ void makingRegister(char* LINHA, FILE *newFile){
         memset(completar, '#', REGISTER_SIZE*sizeof(char));
         fwrite(completar,sizeof(char), espacoUsado, newFile);
 
+        
 } 
 
 //converting csv
-void DealingCSV (char* name ){
+void DealingCSV (char* name, char*novo){
 
     char* linha;
     linha = (char*) calloc(85,sizeof(char));
-
+    
     FILE *ptr = fopen(name, "r" );
+   
+    if(ptr == NULL) {
+        fprintf(stdout, "Falha no carregamento do arquivo.\n");
+        return;
+    }
 
      fseek(ptr, 77, SEEK_SET);
 
         
         FILE *newFile;
-        newFile = fopen ("arquivoGerado.bin", "wb");
+        newFile = fopen (novo, "wb");
+        if(newFile == NULL) {
+        fprintf(stdout, "Falha no carregamento do arquivo.\n");
+        return;
+        }
 
      while(fgets(linha, REGISTER_SIZE*sizeof(char), ptr) != NULL){
-         
-
-         printf("%s", linha);
 
          makingRegister(linha, newFile);
          memset(linha, '\0',85*sizeof(char) );
     }
         fclose (ptr);
-        binarioNaTela1("arquivoGerado.bin");
+        fclose(novo);
+        binarioNaTela1(novo);
     }
 
 
@@ -861,26 +869,23 @@ int main(){
     char *Field = NULL;
     char *Value = NULL;
 
-    // char *nomeCVS = "caso02.csv";
-    // DealingCSV(nomeCVS);
-
-    //Insert("caso02.bin", 2);
-
-
-    //printHeader(header);
+  
 
     switch (command){
         case 1:
             csvName = strtok(args, Delim);
             filename = strtok(args, Delim);
-            if(getBinaryFile(filename, &fp, &header, "wb+") == FAILED)
-                return 0;
+            //if(getBinaryFile(filename, &fp, &header, "wb+") == FAILED)
+              //  return 0;
 
             csvP = fopen(csvName, "rb");
-            if(csvP == NULL)
+            if(csvP == NULL){
+             fprintf(stdout, "Falha no carregamento do arquivo.\n");
                 return 0;
+                         }
+                
 
-            
+            DealingCSV (csvName,filename);
             
 
             break;
