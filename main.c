@@ -112,7 +112,6 @@ DataRegister getRegister(FILE *fp, int rrn){
 
     //sets the cursor position to match the given rrn 
     if(seek >= fl || fseek(fp, rrn*REGISTER_SIZE+HEADER_SIZE, SEEK_SET) != 0){
-        printf("Registro inexistente.\n");
         reg.rrn = FAILED;
         return reg;
     }
@@ -185,12 +184,18 @@ void printDataFile(FILE *fp, DataHeader header){
     DataRegister currReg;             //Current data register    
     while (currRRN < header.maxRRN){           //keeps reading the file while there is data available
         currReg = getRegister(fp, currRRN);    //get the next register in the file and print it
-        if(!isRegRemoved(currReg)){
-            printRegister(currReg);
-            thereIsData = 1;
+
+        if(currReg.rrn == FAILED){
+            printf("Registro inexistente.\n");
+        }
+        else{
+            if(!isRegRemoved(currReg)){
+                printRegister(currReg);
+                thereIsData = 1;
+            }
+            freeRegister(currReg);
         }
 
-        freeRegister(currReg);
         currRRN++;
     }
     if(!thereIsData)
@@ -625,10 +630,10 @@ void data(char *datafinal){
 
 
 //Save current Register
-void saveRegister(FILE *fp, DataRegister reg, int rrn){
+void saveRegister(FILE *fp, DataRegister reg){
     //delimiter symbol
     char delim = '|'; 
-    fseek(fp, 19, SEEK_SET);
+    fseek(fp, reg.rrn*REGISTER_SIZE + HEADER_SIZE, SEEK_SET);
     fwrite(reg.estadoOrigem, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
     fwrite(reg.estadoDestino, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
     fwrite(&reg.distancia, sizeof(__int16_t), 1*sizeof(__int16_t), fp);
@@ -647,20 +652,22 @@ void updateRegister(FILE *fp, DataHeader header, int size){
     //field identifier
     int fieldId = 0;
     //Field Name
-    char *Field = (char*)calloc(14, sizeof(char));
+    char *Field = (char*)calloc(REGISTER_SIZE, sizeof(char));
     //Value of a field
     char* value = (char*)calloc(REGISTER_SIZE, sizeof(char));
 
     for(int n = 0; n < size; n++){
         DataRegister Reg;
-        printf("Qual o RRN?\n");
         scanf("%d", &rrn);
-        printf("Qual o campo?\n");
-        scanf(" %s", Field);
-        printf("Qual o valor?\n");
+        getchar();
+        scanf("%s", Field);
         scan_quote_string(value);
+
         fieldId = getFieldId(Field);
         Reg = getRegister(fp, rrn);
+        if(Reg.rrn == FAILED)
+            continue;
+
         switch (fieldId) {
             case ESTADO_ORIGEM:
                 Reg.estadoOrigem = value;
@@ -683,9 +690,10 @@ void updateRegister(FILE *fp, DataHeader header, int size){
             default:
                 printf("Falha no processamento do arquivo.\n");
                 return;
-        }saveRegister(fp, Reg, rrn);
-    }printDataFile(fp, header);
-    
+        }
+        saveRegister(fp, Reg);
+    }
+    //printDataFile(fp, header);
 }
 
 //defragmenting file
@@ -701,7 +709,8 @@ void defragmenter(char *in, char *out, DataHeader header){
     for(int i = 0, j = 0; i < header.maxRRN; i++){
         aux = getRegister(file_read, i);
         if(isRegRemoved(aux) != '*'){
-            saveRegister(file_write, aux, j);
+            aux.rrn = j;
+            saveRegister(file_write, aux);
             j++;
         }
     }
@@ -841,9 +850,11 @@ int main(){
 
     int i = 0;
     FILE *fp = NULL;
+    FILE *csvP = NULL;
     char Delim[] = {' ', '\0'};
     DataHeader header;
     header = getHeader(fp);
+    char *csvName;
     char *filename;
     char *degub;
     city *hashTable;
@@ -860,15 +871,18 @@ int main(){
 
     switch (command){
         case 1:
-            
-            filename = args;
-            printf("filename: |%s|\n", filename);
-            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
+            csvName = strtok(args, Delim);
+            filename = strtok(args, Delim);
+            if(getBinaryFile(filename, &fp, &header, "wb+") == FAILED)
                 return 0;
 
-            printHeader(header);
+            csvP = fopen(csvName, "rb");
+            if(csvP == NULL)
+                return 0;
 
-            fclose(fp);
+            
+            
+
             break;
 
         case 2:
@@ -935,11 +949,21 @@ int main(){
             fclose(fp);
 
             binarioNaTela1(filename);
-            fclose(fp);
             break;
 
         case 7:
+            filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            strcpy(filename, strtok(args, Delim));
+            i = atoi(strtok(NULL, Delim));
+            
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
+                return 0;
+            fseek(fp, 0L, SEEK_SET);
+            
+            updateRegister(fp, header, i);
             fclose(fp);
+
+            binarioNaTela1(filename);
             break;
 
         case 8:
