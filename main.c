@@ -204,7 +204,6 @@ void printHeader(DataHeader header){
     printf("fileLength:  %ld\n", header.fileLength);
     printf("numeroVertices: %d\n", header.numeroVertices);
     printf("numeroArestas:  %d\n", header.numeroArestas);
-    printf("numeroArestas:  %d\n", header.numeroArestas);
     printf("dataUltimaCompactacao: %.10s\n", header.dataUltimaCompactacao);
     printf("\n");
 }
@@ -330,10 +329,26 @@ void hashRemove(city *hashTable, city item, DataHeader *header){
     if(hashTable[index].appearances == 1){
         free(hashTable[index].name);
         hashTable[index].name = NULL;
-        (header->numeroVertices)--;
+        header->numeroVertices = header->numeroVertices - 1;
     }
     else{
         hashTable[index].appearances--;
+    }
+}
+
+
+void hashInsert(city *hashTable, city item, DataHeader *header){
+    int index = hashSearch(hashTable, item);
+
+    if(hashTable[index].name == NULL){
+        hashTable[index] = item;
+        hashTable[index].appearances = item.appearances;
+        (header->numeroVertices)++;
+    }
+    else{
+        free(item.name);
+        hashTable[index].appearances++;
+        
     }
 }
 
@@ -351,14 +366,15 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
 
     int registersRemoved = 0;
     for(rrn = 0; rrn < header->maxRRN; rrn++){
+        // printf("d0.0\n");
         reg = getRegister(fp, rrn);
         if(reg.rrn == FAILED)
-            break;
+            continue;
 
         if(isRegRemoved(reg))
             continue;
             
-        // printf("d0.0\n");
+        // printf("d0.1\n");
         // printRegister(reg);
         if(compareFieldValue(reg, value, fieldId)){
             // if(fieldId == TEMPO_VIAGEM && value != NULL)
@@ -389,7 +405,6 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
 
     if(registersRemoved == 1){
         overwriteFileHeader(fp, *header);
-        printf("oi\n");
     }
 }
 
@@ -483,103 +498,118 @@ void DealingCSV (char* name ){
 
 
 
-
-//Insert function   
-void Insert (char *name, int num){
-   
-   //opening file
-    FILE *ptr;
-    ptr =  fopen(name, "ab+" );
-
-    int espacoTotal;
-        espacoTotal = 0;
-    int tmp;
-        tmp = 0;
-
-    if(ptr == NULL){
-        printf("Falha no processamento do arquivo.");
-        return;
-    }else{
-
-        int i = 0;
-         
-        char* completar;
-        completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
-        memset(completar, '#', REGISTER_SIZE*sizeof(char));
-
-        while( i!= num ){
-             i++;
-          
-
-            int espacoUsado;
-
-            //fixed sixe
-            char*estadoOrigem;
-            estadoOrigem = (char*)calloc(3, sizeof(char));
-            scanf("%s", estadoOrigem);
-            printf("%s", estadoOrigem);
-            fwrite(estadoOrigem ,sizeof(char), 2, ptr);
-            free(estadoOrigem);
-
-            char*estadoDestino;
-            estadoDestino = (char*)calloc(3, sizeof(char));
-            scanf("%s", estadoDestino);
-            printf("%s", estadoDestino);
-            fwrite(estadoDestino ,sizeof(char), 2, ptr);
-            free(estadoDestino);
-            
-
-            int Distancia;
-            scanf("%d", &Distancia);
-            printf ("%d", Distancia);
-            getchar();
-            fwrite(&Distancia ,sizeof(int),1, ptr);
-            
-            //variable size 
-            char*cidadeOrigem;
-            int lenCO;
-            lenCO= 0;
-            cidadeOrigem = (char*)calloc(85, sizeof(char));
-            scan_quote_string(cidadeOrigem);
-            lenCO = strlen(cidadeOrigem);
-            fwrite(cidadeOrigem ,sizeof(char), lenCO, ptr);
-            fputc('|', ptr);
-            free(cidadeOrigem);
-
-            char*cidadeDestino;
-            int lenCD;
-            lenCD = 0;
-            cidadeDestino = (char*)calloc(85, sizeof(char));
-            scan_quote_string(cidadeDestino);
-            lenCD =  strlen(cidadeDestino);
-            fwrite(cidadeDestino ,sizeof(char), lenCD , ptr);
-            fputc('|', ptr);
-            free(cidadeDestino);
-
-            char*tempoViagem;
-            int tV;
-            tV = 0;
-            tempoViagem = (char*)calloc(85, sizeof(char));
-            scan_quote_string(tempoViagem);
-            tV = strlen(tempoViagem);
-            fwrite(tempoViagem ,sizeof(char), tV, ptr);
-            fputc('|', ptr);
-            free(tempoViagem);
-
-            espacoUsado = lenCD + lenCO + tV + 3;
-            tmp = espacoUsado;
-
-        }
-
-        espacoTotal = espacoTotal + tmp;
-
-        fwrite(completar,sizeof(char), espacoTotal, ptr);
-
-
-        
-        fclose (ptr);
+int getBinaryFile(char *filename, FILE **fp, DataHeader *header, char* mode){
+    FILE *tempFP = fopen(filename, mode);
+    if(tempFP == NULL) {
+        fprintf(stdout, "Falha no processamento do arquivo.\n");
+        return FAILED;
     }
 
+    *header = getHeader(tempFP);
+    if(header->status == '0'){
+        fprintf(stdout, "Falha no processamento do arquivo.\n");
+        return FAILED;
+    }
+
+    *fp = tempFP;
+    return SUCESS;
+}
+
+
+//Insert function   
+void Insert (FILE *fp, int num, city *hashTable, DataHeader *header, char *filename){
+    int espacoTotal = 0;
+    int tmp = 0;
+
+    int i = 0;
+    int Distancia = 0;
+    
+    char*tempoViagem = NULL;
+    char*estadoOrigem = NULL;
+    char*cidadeOrigem = NULL;
+    char*estadoDestino = NULL;
+    char*cidadeDestino = NULL;
+    char* completar = (char*)malloc (REGISTER_SIZE*sizeof(char));
+    memset(completar, '#', REGISTER_SIZE*sizeof(char));
+
+    city currCity = {.name = NULL, .appearances = 1};
+
+    // printf("d2.01\n");
+
+    while( i!= num ){
+        i++;
+        int espacoUsado;
+
+
+        // printf("d2.02\n");
+        //fixed sixe
+        estadoOrigem = (char*)calloc(3, sizeof(char));
+        scanf("%s", estadoOrigem);
+        // printf("%s", estadoOrigem);
+        fwrite(estadoOrigem ,sizeof(char), 2, fp);
+
+        // printf("d2.03\n");
+        estadoDestino = (char*)calloc(3, sizeof(char));
+        scanf("%s", estadoDestino);
+        // printf("%s", estadoDestino);
+        fwrite(estadoDestino ,sizeof(char), 2, fp);
+
+        // printf("d2.04\n");
+        scanf("%d", &Distancia);
+        // printf ("%d", Distancia);
+        getchar();
+        fwrite(&Distancia ,sizeof(int),1, fp);
+
+        // printf("d2.05\n");
+        //variable size 
+        int lenCO;
+        lenCO= 0;
+        cidadeOrigem = (char*)calloc(85, sizeof(char));
+        scan_quote_string(cidadeOrigem);
+        lenCO = strlen(cidadeOrigem);
+        // printf("%s|", cidadeOrigem);
+        fwrite(cidadeOrigem ,sizeof(char), lenCO, fp);
+        fputc('|', fp);
+
+        // printf("d2.06\n");
+        int lenCD;
+        lenCD = 0;
+        cidadeDestino = (char*)calloc(85, sizeof(char));
+        scan_quote_string(cidadeDestino);
+        lenCD =  strlen(cidadeDestino);
+        // printf("%s|", cidadeDestino);
+        fwrite(cidadeDestino ,sizeof(char), lenCD , fp);
+        fputc('|', fp);
+
+        // printf("d2.06\n");
+        int tV;
+        tV = 0;
+        tempoViagem = (char*)calloc(85, sizeof(char));
+        scan_quote_string(tempoViagem);
+        tV = strlen(tempoViagem);
+        // printf("%s|\n", tempoViagem);
+        fwrite(tempoViagem ,sizeof(char), tV, fp);
+        fputc('|', fp);
+
+        // printf("d2.07\n");
+        espacoUsado = lenCD + lenCO + tV + 3;
+        fwrite(completar,sizeof(char), VARIABLE_FIELD_SIZE - espacoUsado, fp);
+
+        // printf("d2.08\n");
+        currCity.name = cidadeOrigem;
+        // printf("d2.081\n");
+        hashInsert(hashTable, currCity, header);
+        // printf("d2.082\n");
+        currCity.name = cidadeDestino;
+        // printf("d2.083\n");
+        hashInsert(hashTable, currCity, header);
+        header->numeroArestas = header->numeroArestas + 1;
+
+        free(tempoViagem);
+        free(estadoOrigem);
+        free(estadoDestino);
+    }
+    overwriteFileHeader(fp, *header);
 }
 
 void setHeaderStatus(FILE *fp, char status){
@@ -674,30 +704,18 @@ void defragmenter(char *in, char *out, DataHeader header){
             saveRegister(file_write, aux, j);
             j++;
         }
-    }data(header.dataUltimaCompactacao);
+    }
+    
+    data(header.dataUltimaCompactacao);
     fseek(file_write, 9, SEEK_SET);
     fwrite(header.dataUltimaCompactacao, sizeof(header.dataUltimaCompactacao), 10, file_write);
     printDataFile(file_write, header);
     fclose(file_read);
     fclose(file_write);
-    
 }   
 
-void hashInsert(city *hashTable, city item){
-    int index = hashSearch(hashTable, item);
 
-    if(hashTable[index].name == NULL){
-        hashTable[index] = item;
-        hashTable[index].appearances = item.appearances;
-    }
-    else{
-        free(item.name);
-        hashTable[index].appearances++;
-    }
-}
-
-
-int recoverHashTable(city *hashTable, DataHeader header){
+int recoverHashTable(city *hashTable, DataHeader *header){
     FILE *hashFile;
     hashFile = fopen("aux.bin", "rb");
     if(hashFile == NULL){
@@ -709,7 +727,7 @@ int recoverHashTable(city *hashTable, DataHeader header){
     char delim[] = {'|', '\0'};
     char *variableSizeData = (char*)malloc(REGISTER_SIZE * sizeof(char));
 
-    for(i = 0; i < header.numeroVertices; i++){
+    for(i = 0; i < header->numeroVertices; i++){
         memset(variableSizeData, '\0', REGISTER_SIZE * sizeof(char));
         fgets(variableSizeData, REGISTER_SIZE, hashFile);
 
@@ -717,15 +735,24 @@ int recoverHashTable(city *hashTable, DataHeader header){
         strcpy(currCity.name, strtok(variableSizeData, delim));
         currCity.appearances = atoi(strtok(NULL, delim));
 
-        hashInsert(hashTable, currCity);
+        hashInsert(hashTable, currCity, header);
     }
     return SUCESS;
 
 }
 
-city* createHashTable(FILE* fp, DataHeader header){
+void zeroFillHashTable(city* hashTable){
+    int i = 0;
+    for(i = 0; i < HASH_TABLE_SIZE; i++){
+        hashTable[i] = (city){.name = NULL, .appearances = 0};
+    }
+}
+
+city* createHashTable(FILE* fp, DataHeader *header){
     city *hashTable = (city*)calloc(HASH_TABLE_SIZE, sizeof(city));
-    if(header.status == '1' && recoverHashTable(hashTable, header) == SUCESS)
+    zeroFillHashTable(hashTable);
+
+    if(header->status == '1' && recoverHashTable(hashTable, header) == SUCESS)
         return hashTable;
     
     fseek(fp, HEADER_SIZE, SEEK_SET);
@@ -743,7 +770,8 @@ city* createHashTable(FILE* fp, DataHeader header){
 	size_t seek = HEADER_SIZE;
     fseek(fp, seek, SEEK_SET);
 
-    for(i = 0; i < header.maxRRN; i++){
+    header->numeroVertices = 0;
+    for(i = 0; i < header->maxRRN; i++){
         fseek(fp, seek + aux, SEEK_SET);
         memset(variableSizeData, '\0', REGISTER_SIZE * sizeof(char));
         fread(variableSizeData, sizeof(char), VARIABLE_FIELD_SIZE, fp);
@@ -753,9 +781,9 @@ city* createHashTable(FILE* fp, DataHeader header){
         strcpy(cidadeOrigem.name, strtok(variableSizeData, delim));
         strcpy(cidadeDestino.name, strtok(NULL, delim));
         
-        hashInsert(hashTable, cidadeOrigem);
+        hashInsert(hashTable, cidadeOrigem, header);
         //if(strcmp(cidadeOrigem.name, cidadeDestino.name) != 0)
-        hashInsert(hashTable, cidadeDestino);
+        hashInsert(hashTable, cidadeDestino, header);
 
         seek += REGISTER_SIZE;
     }
@@ -797,23 +825,6 @@ DataHeader generateHeader(city* hashTable){
     return header;
 }  
 
-int getBinaryFile(char *filename, FILE **fp, DataHeader *header){
-    FILE *tempFP = fopen(filename, "rb+");
-    if(tempFP == NULL) {
-        fprintf(stdout, "Falha no processamento do arquivo.\n");
-        return FAILED;
-    }
-
-    *header = getHeader(tempFP);
-    if(header->status == '0'){
-        fprintf(stdout, "Falha no processamento do arquivo.\n");
-        return FAILED;
-    }
-
-    *fp = tempFP;
-    return SUCESS;
-}
-
 void resetUltimaCompactacao(DataHeader *header){
     memset(header->dataUltimaCompactacao, '#', 10);
 }
@@ -850,12 +861,19 @@ int main(){
     switch (command){
         case 1:
             
+            filename = args;
+            printf("filename: |%s|\n", filename);
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
+                return 0;
+
+            printHeader(header);
+
             fclose(fp);
             break;
 
         case 2:
             filename = args;
-            if(getBinaryFile(filename, &fp, &header) == FAILED)
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
                 return 0;
             printDataFile(fp, header);    
             fclose(fp);        
@@ -863,7 +881,7 @@ int main(){
 
         case 3:
             filename = strtok(args, Delim);
-            if(getBinaryFile(filename, &fp, &header) == FAILED)
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
                 return 0;
             searchByField(fp, &header, strtok(NULL, Delim), strtok(NULL, Delim), SEARCH_FILES, NULL);
             fclose(fp);
@@ -871,7 +889,7 @@ int main(){
 
         case 4:
             filename = strtok(args, Delim);
-            if(getBinaryFile(filename, &fp, &header) == FAILED)
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
                 return 0;
             printRegister(getRegister(fp, atoi(strtok(NULL, Delim))));
             fclose(fp);
@@ -879,17 +897,15 @@ int main(){
 
         case 5:
             filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
-            //printf("args: |%s|\n", args);
             strcpy(filename, strtok(args, Delim));
-            degub = strtok(NULL, Delim);
-            if(getBinaryFile(filename, &fp, &header) == FAILED)
-                return 0;
-            resetUltimaCompactacao(&header);
-            overwriteFileHeader(fp, header);
-            
-            hashTable = createHashTable(fp, header);
+            i = atoi(strtok(NULL, Delim));
 
-            for(i = atoi(degub); i > 0; i--){
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
+                return 0;
+            
+            hashTable = createHashTable(fp, &header);
+
+            for(; i > 0; i--){
                 fgets(args, INPUT_LIMIT, stdin);
                 args[strlen(args) - 1] = '\0';
                 Field = strtok(args, Delim);
@@ -900,11 +916,25 @@ int main(){
 
                 searchByField(fp, &header, Value, Field, REMOVE_FILES, hashTable);
             }      
+
             fclose(fp); 
             binarioNaTela1(filename);
             break;
 
         case 6:
+            filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            strcpy(filename, strtok(args, Delim));
+            i = atoi(strtok(NULL, Delim));
+
+            if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
+                return 0;
+            fseek(fp, 0L, SEEK_END);
+
+            hashTable = createHashTable(fp, &header);
+            Insert(fp, i, hashTable, &header, filename);   
+            fclose(fp);
+
+            binarioNaTela1(filename);
             fclose(fp);
             break;
 
@@ -919,16 +949,7 @@ int main(){
         default:
             break;
     }
-
-    //printDataFile(fp, header);
-
-    //printf("\n\n");
-    //searchByField(fp, header, "distancia", "150", SEARCH_FILES);
-    //updateRegister(fp, header, 2);
-
-    // city *hashTable = createHashTable(fp, header);
-    // printHashTable(hashTable, stdout);
-    // saveHashTable(hashTable);
-    //free(args);
+    
+    free(args);
     return 0;
 }
