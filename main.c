@@ -73,8 +73,10 @@ enum registerFields {ESTADO_ORIGEM, ESTADO_DESTINO, CIDADE_ORIGEM, CIDADE_DESTIN
 
 //given a register (reg) and its rrn, prints it
 void printRegister(DataRegister reg){
-    if(reg.rrn == FAILED)
+    if(reg.rrn == FAILED){
+        printf("Registro inexistente.\n");
         return;
+    }
 
     //prints all the data that can't be null
     printf("%d %s %s %d %s %s", reg.rrn, reg.estadoOrigem, reg.estadoDestino, reg.distancia, reg.cidadeOrigem, reg.cidadeDestino);
@@ -102,48 +104,66 @@ void overwriteFileHeader(FILE *fp, DataHeader header){
 //Given a file pointer (fp), get a register 
 //it assumes that the position indicator of the file is the begin of the register
 DataRegister getRegister(FILE *fp, int rrn){
+    // printf("g0\n");
     size_t fl;
     size_t seek;
     DataRegister reg; //creates the register variable...
+    // printf("g1\n");
 
     seek = rrn*REGISTER_SIZE+HEADER_SIZE;
     fseek(fp, 0, SEEK_END);
     fl = ftell(fp);
+    // printf("g2\n");
 
     //sets the cursor position to match the given rrn 
-    if(seek >= fl || fseek(fp, rrn*REGISTER_SIZE+HEADER_SIZE, SEEK_SET) != 0){
+    if(seek > (fl - REGISTER_SIZE) || fseek(fp, rrn*REGISTER_SIZE+HEADER_SIZE, SEEK_SET) != 0){
         reg.rrn = FAILED;
         return reg;
     }
     reg.rrn = rrn;
+    // printf("g3 fl: %ld, seek: %ld\n", fl, seek);
  
     //gets the "estadoOrigem" field
     //estadoOrigem is a fixed size field of size given by FIXED_FIELD_SIZE
     reg.estadoOrigem = (char*)calloc(FIXED_FIELD_SIZE + 1, sizeof(char));
     fread(reg.estadoOrigem, sizeof(char), FIXED_FIELD_SIZE, fp);
     reg.estadoOrigem[FIXED_FIELD_SIZE] = '\0';
+    // printf("g4\n");
 
     //gets the "estadoDestino" field
     //estadoDestino is a fixed size field of size given by FIXED_FIELD_SIZE
     reg.estadoDestino = (char*)calloc(FIXED_FIELD_SIZE + 1, sizeof(char));
     fread(reg.estadoDestino, sizeof(char), FIXED_FIELD_SIZE, fp);
     reg.estadoDestino[FIXED_FIELD_SIZE] = '\0';
+    // printf("g5\n");
 
     //gets the "distancia" field
     //estadoDestino is a fixed size field of size of a int
     fread(&reg.distancia, sizeof(int), 1, fp);
+    // printf("g6\n");
 
     //gets all the variable fields and storage it in one single string
     //since the data register is fixed size, than the size of all variable fields is the size of the register minus the size of the fixed fields
-    char *variableSizeData = (char*)calloc(VARIABLE_FIELD_SIZE + 1, sizeof(char));
+    // printf("g6.04\n");
+    char *variableSizeData = NULL;
+    variableSizeData = (char*)calloc((VARIABLE_FIELD_SIZE + 1), sizeof(char));
+    // printf("g6.05\n");
+    memset(variableSizeData, '\0', (VARIABLE_FIELD_SIZE + 1) * sizeof(char));
+    // printf("g6.1\n");
     fread(variableSizeData, sizeof(char), VARIABLE_FIELD_SIZE, fp);
+    // printf("g6.2\n");
     variableSizeData[VARIABLE_FIELD_SIZE] = '\0';
+    // printf("g7\n");
 
     //sepates the variableSizeData string into the required fields
     char delim[] = {'|', '\0'};
     reg.cidadeOrigem = strtok(variableSizeData, delim);
+    // printf("g8\n");
     reg.cidadeDestino = strtok(NULL, delim);
+    // printf("g9\n");
     reg.tempoViagem = strtok(NULL, delim);
+
+    // printf("g10\n");
 
     //since tempoViagem can be null, then check it if there is acctually a text in the field 
     //if there is a '#', then the field is empty.
@@ -373,8 +393,10 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
     for(rrn = 0; rrn < header->maxRRN; rrn++){
         // printf("d0.0\n");
         reg = getRegister(fp, rrn);
-        if(reg.rrn == FAILED)
+        if(reg.rrn == FAILED){
+            printf("Registro inexistente.\n");
             continue;
+        }
 
         if(isRegRemoved(reg))
             continue;
@@ -614,6 +636,7 @@ void Insert (FILE *fp, int num, city *hashTable, DataHeader *header, char *filen
         free(estadoDestino);
     }
     overwriteFileHeader(fp, *header);
+    free(completar);
 }
 
 void setHeaderStatus(FILE *fp, char status){
@@ -684,7 +707,9 @@ void updateRegister(FILE *fp, DataHeader header, int size, city* hashTable){
         // printf("d1\n");
 
         fieldId = getFieldId(Field);
+        // printf("d1.1\n");
         Reg = getRegister(fp, rrn);
+        // printf("d1.2\n");
         if(Reg.rrn == FAILED)
             continue;
 
@@ -782,6 +807,7 @@ int recoverHashTable(city *hashTable, DataHeader *header){
 
         hashInsert(hashTable, currCity, header);
     }
+    free(variableSizeData);
     return SUCESS;
 
 }
@@ -794,44 +820,58 @@ void zeroFillHashTable(city* hashTable){
 }
 
 city* createHashTable(FILE* fp, DataHeader *header){
+    printf("h0\n");
     city *hashTable = (city*)calloc(HASH_TABLE_SIZE, sizeof(city));
+    printf("h1\n");
     zeroFillHashTable(hashTable);
+    printf("h2\n");
 
     if(header->status == '1' && recoverHashTable(hashTable, header) == SUCESS)
         return hashTable;
     
+    printf("h3\n");
     fseek(fp, HEADER_SIZE, SEEK_SET);
 
+    printf("h4\n");
     int i = 0;
     char delim[] = {'|', '\0'};
-    char *variableSizeData = (char*)malloc(REGISTER_SIZE * sizeof(char));
+    char *variableSizeData = (char*)malloc(VARIABLE_FIELD_SIZE * sizeof(char));
 
+    printf("h5\n");
     city cidadeOrigem;
     city cidadeDestino;
     cidadeOrigem.appearances = 1;
     cidadeDestino.appearances = 1;
+    printf("h6\n");
 
     size_t aux = REGISTER_SIZE - VARIABLE_FIELD_SIZE;
 	size_t seek = HEADER_SIZE;
     fseek(fp, seek, SEEK_SET);
 
+    printf("h7\n");
     header->numeroVertices = 0;
     for(i = 0; i < header->maxRRN; i++){
         fseek(fp, seek + aux, SEEK_SET);
-        memset(variableSizeData, '\0', REGISTER_SIZE * sizeof(char));
+        memset(variableSizeData, '\0', VARIABLE_FIELD_SIZE * sizeof(char));
         fread(variableSizeData, sizeof(char), VARIABLE_FIELD_SIZE, fp);
+        printf("h7.3\n");
 
         cidadeOrigem.name  = (char*)calloc(VARIABLE_FIELD_SIZE, sizeof(char));
         cidadeDestino.name = (char*)calloc(VARIABLE_FIELD_SIZE, sizeof(char));
         strcpy(cidadeOrigem.name, strtok(variableSizeData, delim));
         strcpy(cidadeDestino.name, strtok(NULL, delim));
+        printf("h7.5 Ori: |%s|\n", cidadeOrigem.name);
         
         hashInsert(hashTable, cidadeOrigem, header);
+        printf("h7.6 Dest: |%s|\n", cidadeDestino.name);
         //if(strcmp(cidadeOrigem.name, cidadeDestino.name) != 0)
         hashInsert(hashTable, cidadeDestino, header);
+        printf("h7.7\n");
 
         seek += REGISTER_SIZE;
     }
+    free(variableSizeData);
+    printf("h8\n");
 
     return hashTable;
 }
@@ -997,16 +1037,24 @@ int main(){
             break;
 
         case 7:
+            // printf("l0\n");
             filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            // printf("l1\n");
             strcpy(filename, strtok(args, Delim));
+            // printf("l2\n");
             i = atoi(strtok(NULL, Delim));
+            // printf("l3\n");
             
             if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
                 return 0;
+            // printf("l4\n");
             fseek(fp, 0L, SEEK_SET);
+            // printf("l5\n");
             
             hashTable = createHashTable(fp, &header);
+            // printf("l6\n");
             updateRegister(fp, header, i, hashTable);
+            // printf("l7\n");
             fclose(fp);
 
             binarioNaTela1(filename);
