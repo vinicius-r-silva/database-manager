@@ -13,7 +13,7 @@
 #define HASH_TABLE_SIZE 5000
 
 #define SUCESS 0
-#define FAILED 1
+#define FAILED -1
 
 #define INPUT_LIMIT 300
 #define HEADER_SIZE 19L
@@ -383,7 +383,6 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
         // printRegister(reg);
         if(compareFieldValue(reg, value, fieldId)){
             // if(fieldId == TEMPO_VIAGEM && value != NULL)
-            // printf("d1.0\n");
             if(action == SEARCH_FILES){
                 printRegister(reg);
             }
@@ -936,7 +935,14 @@ int main(){
             filename = strtok(args, Delim);
             if(getBinaryFile(filename, &fp, &header, "rb+") == FAILED)
                 return 0;
-            searchByField(fp, &header, strtok(NULL, Delim), strtok(NULL, Delim), SEARCH_FILES, NULL);
+
+            Field = strtok(NULL, Delim);
+            Value = strtok(NULL, "\n\0");
+            Value = strtok(Value, "\"\0");
+            if(strcmp(Value, "NULO") == 0)
+                Value = NULL;
+            
+            searchByField(fp, &header, Value, Field, SEARCH_FILES, NULL);
             fclose(fp);
             break;
 
