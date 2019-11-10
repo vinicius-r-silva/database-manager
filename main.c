@@ -25,7 +25,7 @@
 #define STATUS_CORRUPTED '0'
 
 #define REMOVE_FILES 1
-#define SEARCH_FILES 1
+#define SEARCH_FILES 2
 //the data register struct
 //it holds all the information that is storaged inside of a data register
 struct DataRegister{
@@ -63,6 +63,9 @@ struct DataHeader{
 
     int numeroVertices;
     int numeroArestas;
+    int maxRRN;
+
+    long fileLength;
 };
 typedef struct DataHeader DataHeader;
 
@@ -92,7 +95,8 @@ void overwriteFileHeader(FILE *fp, DataHeader header){
     fwrite(&(header.status), sizeof(char), 1, fp);
     fwrite(&(header.numeroVertices), sizeof(int), 1, fp);
     fwrite(&(header.numeroArestas), sizeof(int), 1, fp);
-    fwrite(&(header.dataUltimaCompactacao), sizeof(char), 10, fp);
+    fwrite(header.dataUltimaCompactacao, sizeof(char), 10, fp);
+    fflush(fp);
 }
 
 //Given a file pointer (fp), get a register 
@@ -179,7 +183,7 @@ void printDataFile(FILE *fp, DataHeader header){
     //printing the file...
     int currRRN = 0;                  //Current RRN number
     DataRegister currReg;             //Current data register    
-    while (currRRN < header.numeroArestas){           //keeps reading the file while there is data available
+    while (currRRN < header.maxRRN){           //keeps reading the file while there is data available
         currReg = getRegister(fp, currRRN);    //get the next register in the file and print it
         if(!isRegRemoved(currReg)){
             printRegister(currReg);
@@ -196,7 +200,10 @@ void printDataFile(FILE *fp, DataHeader header){
 //given a header, print its content
 void printHeader(DataHeader header){
     printf("status: %c\n", header.status);
+    printf("maxRRN:  %d\n", header.maxRRN);
+    printf("fileLength:  %ld\n", header.fileLength);
     printf("numeroVertices: %d\n", header.numeroVertices);
+    printf("numeroArestas:  %d\n", header.numeroArestas);
     printf("numeroArestas:  %d\n", header.numeroArestas);
     printf("dataUltimaCompactacao: %.10s\n", header.dataUltimaCompactacao);
     printf("\n");
@@ -217,8 +224,8 @@ DataHeader getHeader(FILE *fp){
         return header;
 
     //if there is a file, alloc memory to the "dataUltimaCompactacao" string
-    header.dataUltimaCompactacao = (char*)malloc(10 * sizeof(char));
-    memset(header.dataUltimaCompactacao, '\0', 10 * sizeof(char));
+    header.dataUltimaCompactacao = (char*)malloc(11 * sizeof(char));
+    memset(header.dataUltimaCompactacao, '\0', 11 * sizeof(char));
 
     //set the cursor on the beginning of the file
     fseek(fp, 0L, SEEK_SET);
@@ -228,6 +235,14 @@ DataHeader getHeader(FILE *fp){
     fread(&(header.numeroVertices), sizeof(int), 1, fp);
     fread(&(header.numeroArestas),  sizeof(int), 1, fp);
     fread(header.dataUltimaCompactacao,  sizeof(char), 10, fp);
+
+    //get file length
+    fseek(fp, 0L, SEEK_END);
+    header.fileLength = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+
+    //get the rrn value of the last register
+    header.maxRRN = (header.fileLength - HEADER_SIZE) / REGISTER_SIZE;
 
     return header;
 }
@@ -255,7 +270,7 @@ int getFieldId(char* Field){
 }
 
 int compareFieldValue(DataRegister reg, char* value, int fieldId){
-    if(fieldId == ESTADO_ORIGEM)
+    if(fieldId == ESTADO_ORIGEM)        
         return strcmp(reg.estadoOrigem, value) == 0;
     
     if(fieldId == ESTADO_DESTINO)
@@ -268,7 +283,10 @@ int compareFieldValue(DataRegister reg, char* value, int fieldId){
         return strcmp(reg.cidadeDestino, value) == 0;
 
     if(fieldId == TEMPO_VIAGEM)
-        return strcmp(reg.tempoViagem, value) == 0;
+        if(value == NULL)
+            return reg.tempoViagem == NULL;
+        else
+            return strcmp(reg.tempoViagem, value) == 0;
 
     if(fieldId == DISTANCIA){
         int value_int = atoi(value);
@@ -321,29 +339,41 @@ void hashRemove(city *hashTable, city item, DataHeader *header){
 
 //search a certain value of a field 
 void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int action, city *hashTable){
-    
-    printf("d-6\n");
     int rrn = 0;
+    long int fl;
     DataRegister reg;
     int fieldId = getFieldId(field);
-    printf("d-7\n");
-    printf("1 -field|value: |%s|%s|\n", field, value);
-
-    if(value[0] == '\"')
-        value = strtok(value, "\"");
-
-    printf("2 -field|value: |%s|%s|\n", field, value);
+    
+    // if(value != NULL)
+    //     printf("2-|v|f| |%s|%s|, FieldID: %d\n", value, field, fieldId);
+    // else
+    //     printf("2-|v|f| |NULL|%s|, FieldID: %d\n", field, fieldId);
 
     int registersRemoved = 0;
-    for(rrn = 0; rrn < header->numeroArestas; rrn++){
+    for(rrn = 0; rrn < header->maxRRN; rrn++){
         reg = getRegister(fp, rrn);
+        if(reg.rrn == FAILED)
+            break;
+
         if(isRegRemoved(reg))
             continue;
             
-        if(compareFieldValue(reg, value, fieldId))
-            if(action == SEARCH_FILES)
+        // printf("d0.0\n");
+        // printRegister(reg);
+        if(compareFieldValue(reg, value, fieldId)){
+            // if(fieldId == TEMPO_VIAGEM && value != NULL)
+            // printf("d1.0\n");
+            if(action == SEARCH_FILES){
                 printRegister(reg);
+            }
             else if(action == REMOVE_FILES){
+
+                // if(fieldId == TEMPO_VIAGEM && value != NULL){
+                //     printf("d2.0, rrn: %d\n", reg.rrn);
+                //     continue;
+                // }
+                // printf("d2.0\n");
+
                 logicalDeleteReg(fp, reg);
                 city Origem = {.name = reg.cidadeOrigem, .appearances = 1};
                 city Destino = {.name = reg.cidadeDestino, .appearances = 1};
@@ -353,10 +383,14 @@ void searchByField(FILE *fp, DataHeader *header, char* value, char* field, int a
                 (header->numeroArestas)--;
                 registersRemoved = 1;
             }
+        }
+        // printf("d1.0\n");
     }
 
-    if(registersRemoved)
+    if(registersRemoved == 1){
         overwriteFileHeader(fp, *header);
+        printf("oi\n");
+    }
 }
 
 
@@ -634,7 +668,7 @@ void defragmenter(char *in, char *out, DataHeader header){
     DataRegister aux;
     
 
-    for(int i = 0, j = 0; i < header.numeroVertices; i++){
+    for(int i = 0, j = 0; i < header.maxRRN; i++){
         aux = getRegister(file_read, i);
         if(isRegRemoved(aux) != '*'){
             saveRegister(file_write, aux, j);
@@ -709,7 +743,7 @@ city* createHashTable(FILE* fp, DataHeader header){
 	size_t seek = HEADER_SIZE;
     fseek(fp, seek, SEEK_SET);
 
-    for(i = 0; i < header.numeroArestas; i++){
+    for(i = 0; i < header.maxRRN; i++){
         fseek(fp, seek + aux, SEEK_SET);
         memset(variableSizeData, '\0', REGISTER_SIZE * sizeof(char));
         fread(variableSizeData, sizeof(char), VARIABLE_FIELD_SIZE, fp);
@@ -780,6 +814,10 @@ int getBinaryFile(char *filename, FILE **fp, DataHeader *header){
     return SUCESS;
 }
 
+void resetUltimaCompactacao(DataHeader *header){
+    memset(header->dataUltimaCompactacao, '#', 10);
+}
+
 int main(){
     int command = -1;
     char *args = (char*)malloc(INPUT_LIMIT * sizeof(char));
@@ -796,7 +834,10 @@ int main(){
     DataHeader header;
     header = getHeader(fp);
     char *filename;
+    char *degub;
     city *hashTable;
+    char *Field = NULL;
+    char *Value = NULL;
 
     // char *nomeCVS = "caso02.csv";
     // DealingCSV(nomeCVS);
@@ -837,17 +878,29 @@ int main(){
             break;
 
         case 5:
-            filename = strtok(args, Delim);
+            filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            //printf("args: |%s|\n", args);
+            strcpy(filename, strtok(args, Delim));
+            degub = strtok(NULL, Delim);
             if(getBinaryFile(filename, &fp, &header) == FAILED)
                 return 0;
+            resetUltimaCompactacao(&header);
+            overwriteFileHeader(fp, header);
             
             hashTable = createHashTable(fp, header);
 
-            for(i = atoi(strtok(NULL, Delim)); i > 0; i--){
+            for(i = atoi(degub); i > 0; i--){
                 fgets(args, INPUT_LIMIT, stdin);
-                searchByField(fp, &header, strtok(args, Delim), strtok(NULL, Delim), REMOVE_FILES, hashTable);
+                args[strlen(args) - 1] = '\0';
+                Field = strtok(args, Delim);
+                Value = strtok(NULL, "\n\0");
+                Value = strtok(Value, "\"\0");
+                if(strcmp(Value, "NULO") == 0)
+                    Value = NULL;
+
+                searchByField(fp, &header, Value, Field, REMOVE_FILES, hashTable);
             }      
-            fclose(fp);
+            fclose(fp); 
             binarioNaTela1(filename);
             break;
 
