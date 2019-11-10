@@ -641,20 +641,34 @@ void data(char *datafinal){
 void saveRegister(FILE *fp, DataRegister reg){
     //delimiter symbol
     char delim = '|'; 
+    // printf("d3.01\n");
     fseek(fp, reg.rrn*REGISTER_SIZE + HEADER_SIZE, SEEK_SET);
-    fwrite(reg.estadoOrigem, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
-    fwrite(reg.estadoDestino, sizeof(char), sizeof(char)*FIXED_FIELD_SIZE, fp);
-    fwrite(&reg.distancia, sizeof(__int16_t), 1*sizeof(__int16_t), fp);
-    fwrite(reg.cidadeOrigem, sizeof(char), sizeof(char)*strlen(reg.cidadeOrigem), fp);
-    fwrite(&delim, sizeof(char), 1*sizeof(char), fp);
-    fwrite(reg.cidadeDestino, sizeof(char),  sizeof(char)*strlen(reg.cidadeDestino), fp);
-    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
-    fwrite(reg.tempoViagem, sizeof(char),  sizeof(char)*strlen(reg.tempoViagem), fp);
-    fwrite(&delim, sizeof(char), sizeof(char)*1, fp);
+    // printf("d3.02\n");
+    fwrite(reg.estadoOrigem, sizeof(char), FIXED_FIELD_SIZE, fp);
+    // printf("d3.03\n");
+    fwrite(reg.estadoDestino, sizeof(char), FIXED_FIELD_SIZE, fp);
+    // printf("d3.04\n");
+    fwrite(&(reg.distancia), sizeof(int), 1, fp);
+    // printf("d3.05\n");
+    fwrite(reg.cidadeOrigem, sizeof(char), strlen(reg.cidadeOrigem), fp);
+    // printf("d3.06\n");
+    fwrite(&(delim), sizeof(char), 1, fp);
+    // printf("d3.07\n");
+    fwrite(reg.cidadeDestino, sizeof(char), strlen(reg.cidadeDestino), fp);
+    // printf("d3.08\n");
+    fwrite(&(delim), sizeof(char), 1, fp);
+    // printf("d3.09\n");
+    if(reg.tempoViagem != NULL)
+        fwrite(reg.tempoViagem, sizeof(char), strlen(reg.tempoViagem), fp);
+    
+    
+    // printf("d3.10\n");
+    fwrite(&(delim), sizeof(char), 1, fp);
+    // printf("d3.11\n");
 }
 
 //Updating a field register (Function 7)
-void updateRegister(FILE *fp, DataHeader header, int size){
+void updateRegister(FILE *fp, DataHeader header, int size, city* hashTable){
     //RRN Value
     int rrn = 0;
     //field identifier
@@ -664,17 +678,26 @@ void updateRegister(FILE *fp, DataHeader header, int size){
     //Value of a field
     char* value = (char*)calloc(REGISTER_SIZE, sizeof(char));
 
+    city currCity = (city){.name = NULL, .appearances = 0};
+    int wasHeaderModified = 0;
+
+    DataRegister Reg;
+
     for(int n = 0; n < size; n++){
-        DataRegister Reg;
+        // printf("d0\n");
         scanf("%d", &rrn);
         getchar();
         scanf("%s", Field);
         scan_quote_string(value);
 
+        // printf("d1\n");
+
         fieldId = getFieldId(Field);
         Reg = getRegister(fp, rrn);
         if(Reg.rrn == FAILED)
             continue;
+
+        // printf("d2 r|f|v|: %d|%s|%s|\n", rrn, Field, value);
 
         switch (fieldId) {
             case ESTADO_ORIGEM:
@@ -684,10 +707,24 @@ void updateRegister(FILE *fp, DataHeader header, int size){
                 Reg.estadoDestino = value;
                 break;
             case CIDADE_ORIGEM:
+                currCity.name = Reg.cidadeOrigem;
+                hashRemove(hashTable, currCity, &header);
+
                 Reg.cidadeOrigem = value;
+
+                currCity.name = value;
+                hashInsert(hashTable, currCity, &header);
+                wasHeaderModified = 1;
                 break;
             case CIDADE_DESTINO:
+                currCity.name = Reg.cidadeDestino;
+                hashRemove(hashTable, currCity, &header);
+
                 Reg.cidadeDestino = value;
+
+                currCity.name = value;
+                hashInsert(hashTable, currCity, &header);
+                wasHeaderModified = 1;
                 break;
             case TEMPO_VIAGEM:
                 Reg.tempoViagem = value;
@@ -699,24 +736,27 @@ void updateRegister(FILE *fp, DataHeader header, int size){
                 printf("Falha no processamento do arquivo.\n");
                 return;
         }
+        // printf("d3\n");
         saveRegister(fp, Reg);
+        // printf("d4\n");
     }
+    if(wasHeaderModified)
+        overwriteFileHeader(fp, header);
     //printDataFile(fp, header);
 }
 
 //defragmenting file
-void defragmenter(char *in, char *out, DataHeader header){
-    char file_in[strlen(in)+1], file_out[strlen(out)+1];
-    snprintf(file_in, sizeof(file_in), "%s", in);
-    snprintf(file_out, sizeof(file_out), "%s", out);
-    FILE *file_read = fopen(file_in, "rb");
-    FILE *file_write = fopen(file_out, "rb+");
+void defragmenter(FILE *fp, char *out, DataHeader header){
+    FILE *file_read = fp;
+    FILE *file_write = fopen(out, "rb+");
     DataRegister aux;
-    
+
+    if(file_write == NULL)
+        return;    
 
     for(int i = 0, j = 0; i < header.maxRRN; i++){
         aux = getRegister(file_read, i);
-        if(isRegRemoved(aux) != '*'){
+        if(!isRegRemoved(aux)){
             aux.rrn = j;
             saveRegister(file_write, aux);
             j++;
@@ -724,10 +764,7 @@ void defragmenter(char *in, char *out, DataHeader header){
     }
     
     data(header.dataUltimaCompactacao);
-    fseek(file_write, 9, SEEK_SET);
-    fwrite(header.dataUltimaCompactacao, sizeof(header.dataUltimaCompactacao), 10, file_write);
-    printDataFile(file_write, header);
-    fclose(file_read);
+    overwriteFileHeader(file_write, header);
     fclose(file_write);
 }   
 
@@ -858,12 +895,14 @@ int main(){
 
     int i = 0;
     FILE *fp = NULL;
+    FILE *outp = NULL;
     FILE *csvP = NULL;
     char Delim[] = {' ', '\0'};
     DataHeader header;
     header = getHeader(fp);
     char *csvName;
     char *filename;
+    char *outputFile;
     char *degub;
     city *hashTable;
     char *Field = NULL;
@@ -965,14 +1004,36 @@ int main(){
                 return 0;
             fseek(fp, 0L, SEEK_SET);
             
-            updateRegister(fp, header, i);
+            hashTable = createHashTable(fp, &header);
+            updateRegister(fp, header, i, hashTable);
             fclose(fp);
 
             binarioNaTela1(filename);
             break;
 
         case 8:
+            filename = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            strcpy(filename, strtok(args, Delim));
+
+            outputFile = (char*)calloc(INPUT_LIMIT, sizeof(char));
+            strcpy(outputFile, strtok(NULL, Delim));
+
+            fp = fopen(filename, "rb");
+            if(fp == NULL) {
+                fprintf(stdout, "Falha no carregamento do arquivo.\n");
+                return 0;
+            }
+
+            header = getHeader(fp);
+            if(header.status == '0'){
+                fprintf(stdout, "Falha no carregamento do arquivo.\n");
+                return 0;
+            }
+
+            defragmenter(fp, outputFile, header);
             fclose(fp);
+
+            binarioNaTela1(outputFile);
             break;
         
         default:
